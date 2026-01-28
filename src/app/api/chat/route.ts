@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-server';
 import { geminiModel, embeddingModel } from '@/lib/gemini';
 
 export async function POST(req: Request) {
