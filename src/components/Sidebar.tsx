@@ -41,8 +41,12 @@ export function Sidebar() {
                             exit={{ opacity: 0, x: -20 }}
                             className="flex items-center gap-3"
                         >
-                            <div className="w-10 h-10 bg-black rounded-xl border border-white/10 flex items-center justify-center shadow-luxury">
-                                <Zap className="text-[#139187]" size={20} />
+                            <div className="w-10 h-10 relative">
+                                <img
+                                    src="/Transparent%20Logo%20Elvison.png"
+                                    alt="Elvison Logo"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
                             <span className="font-serif text-2xl font-bold tracking-tight text-white italic">Elvison</span>
                         </motion.div>
