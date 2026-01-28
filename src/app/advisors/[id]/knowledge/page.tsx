@@ -12,7 +12,7 @@ import {
     Upload,
     AlertCircle
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabaseClient as supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 

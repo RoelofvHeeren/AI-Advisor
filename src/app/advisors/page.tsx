@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Users, Search, MoreVertical, Trash2, Edit3, BookOpen } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabaseClient as supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
