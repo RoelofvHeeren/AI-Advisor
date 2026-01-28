@@ -10,7 +10,9 @@ import {
     ArrowLeft,
     Trash2,
     Upload,
-    AlertCircle
+    AlertCircle,
+    Sparkles,
+    Search
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,12 +22,13 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
     const { id: advisorId } = use(params);
     const [advisor, setAdvisor] = useState<any>(null);
     const [documents, setDocuments] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'upload' | 'transcript' | 'web'>('upload');
+    const [activeTab, setActiveTab] = useState<'upload' | 'transcript' | 'web' | 'research'>('upload');
 
     // States
     const [isIngesting, setIsIngesting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [url, setUrl] = useState('');
+    const [researchQuery, setResearchQuery] = useState('');
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<string | null>(null);
 
@@ -145,6 +148,39 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
         }
     };
 
+    const handleResearch = async () => {
+        if (!researchQuery) return;
+
+        setIsIngesting(true);
+        setStatus(`Searching and researching "${researchQuery}"... This may take a minute.`);
+
+        try {
+            const res = await fetch('/api/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: researchQuery,
+                    advisorId: advisorId
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setStatus(`Research complete! Found and indexed ${data.results.length} sources.`);
+                setResearchQuery('');
+                // Refresh docs
+                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                setDocuments(docs || []);
+            } else {
+                setStatus(`Error: ${data.error}`);
+            }
+        } catch (e) {
+            setStatus('Failed to complete auto-research.');
+        } finally {
+            setIsIngesting(false);
+        }
+    };
+
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: { 'application/pdf': ['.pdf'] },
@@ -178,21 +214,27 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
                         <div className="flex gap-4 p-1 bg-black/20 rounded-xl mb-6">
                             <button
                                 onClick={() => setActiveTab('upload')}
-                                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'upload' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'upload' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 PDF UPLOAD
                             </button>
                             <button
                                 onClick={() => setActiveTab('transcript')}
-                                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'transcript' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'transcript' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 TRANSCRIPT
                             </button>
                             <button
                                 onClick={() => setActiveTab('web')}
-                                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'web' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'web' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 WEB URL
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('research')}
+                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'research' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                AUTO-RESEARCH
                             </button>
                         </div>
 
@@ -255,6 +297,29 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
                                 >
                                     {isIngesting ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
                                     Scrape & Index URL
+                                </button>
+                            </div>
+                        )}
+
+                        {activeTab === 'research' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-[#139187]/10 rounded-xl border border-[#139187]/20 flex items-center gap-3">
+                                    <Sparkles className="text-[#139187]" size={16} />
+                                    <p className="text-xs text-[#139187]/80 italic">The AI will search the web for the best interviews, articles, and data on this topic.</p>
+                                </div>
+                                <input
+                                    value={researchQuery}
+                                    onChange={e => setResearchQuery(e.target.value)}
+                                    placeholder="e.g. Elon Musk business advice or Alex Hormozi gym scaling"
+                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#139187] transition-all"
+                                />
+                                <button
+                                    onClick={handleResearch}
+                                    disabled={isIngesting || !researchQuery}
+                                    className="w-full py-4 bg-gradient-to-r from-[#139187] to-indigo-600 text-white font-bold rounded-xl shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isIngesting ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />}
+                                    Run Auto-Research
                                 </button>
                             </div>
                         )}
