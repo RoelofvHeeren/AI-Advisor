@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { embeddingModel } from '@/lib/gemini';
-import pdf from 'pdf-parse';
 import * as cheerio from 'cheerio';
 
 export async function POST(req: Request) {
@@ -38,6 +37,9 @@ export async function POST(req: Request) {
             if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
             const bytes = await file.arrayBuffer();
             const buffer = Buffer.from(bytes);
+
+            // Dynamic import to avoid build-time issues
+            const pdf = (await import('pdf-parse')).default;
             const data = await pdf(buffer);
             textContent = data.text;
         }
