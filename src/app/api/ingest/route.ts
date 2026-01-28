@@ -32,6 +32,18 @@ export async function POST(req: Request) {
                 const pageTitle = $('title').text();
                 if (pageTitle) (formData as any).set('title', pageTitle);
             }
+        } else if (type === 'youtube') {
+            const url = formData.get('url') as string;
+            if (!url) throw new Error('Missing YouTube URL');
+
+            const { YoutubeTranscript } = await import('youtube-transcript');
+            const transcript = await YoutubeTranscript.fetchTranscript(url);
+            textContent = transcript.map(t => t.text).join(' ');
+
+            if (!title || title === 'General Knowledge') {
+                // We'll just use the URL as title or a generic one since getting YT title needs API
+                (formData as any).set('title', `YouTube Transcript: ${url}`);
+            }
         } else {
             const file = formData.get('file') as File;
             if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });

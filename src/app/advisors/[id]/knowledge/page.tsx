@@ -12,22 +12,24 @@ import {
     Upload,
     AlertCircle,
     Sparkles,
-    Search
+    Search,
+    Youtube
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
-export default function KnowledgePage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: advisorId } = use(params);
     const [advisor, setAdvisor] = useState<any>(null);
     const [documents, setDocuments] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'upload' | 'transcript' | 'web' | 'research'>('upload');
+    const [activeTab, setActiveTab] = useState<'upload' | 'transcript' | 'web' | 'research' | 'youtube'>('upload');
 
     // States
     const [isIngesting, setIsIngesting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [url, setUrl] = useState('');
+    const [youtubeUrl, setYoutubeUrl] = useState('');
     const [researchQuery, setResearchQuery] = useState('');
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<string | null>(null);
@@ -181,6 +183,40 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
         }
     };
 
+    const handleYoutubeSubmit = async () => {
+        if (!youtubeUrl) return;
+
+        setIsIngesting(true);
+        setStatus(`Extracting transcript from YouTube video...`);
+
+        try {
+            const formData = new FormData();
+            formData.append('url', youtubeUrl);
+            formData.append('advisorId', advisorId);
+            formData.append('type', 'youtube');
+
+            const res = await fetch('/api/ingest', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setStatus(`Successfully indexed YouTube transcript! (${data.chunks} chunks)`);
+                setYoutubeUrl('');
+                // Refresh docs
+                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                setDocuments(docs || []);
+            } else {
+                setStatus(`Error: ${data.error}`);
+            }
+        } catch (e) {
+            setStatus('Failed to process YouTube video.');
+        } finally {
+            setIsIngesting(false);
+        }
+    };
+
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: { 'application/pdf': ['.pdf'] },
@@ -211,28 +247,34 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
                 {/* Left Column: Input */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="glass rounded-2xl p-6">
-                        <div className="flex gap-4 p-1 bg-black/20 rounded-xl mb-6">
+                        <div className="flex gap-4 p-1 bg-black/20 rounded-xl mb-6 overflow-x-auto print:hidden">
                             <button
                                 onClick={() => setActiveTab('upload')}
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'upload' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-1 px-4 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'upload' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 PDF UPLOAD
                             </button>
                             <button
                                 onClick={() => setActiveTab('transcript')}
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'transcript' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-1 px-4 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'transcript' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 TRANSCRIPT
                             </button>
                             <button
+                                onClick={() => setActiveTab('youtube')}
+                                className={`flex-1 py-1 px-4 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'youtube' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                YOUTUBE
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('web')}
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'web' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-1 px-4 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'web' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 WEB URL
                             </button>
                             <button
                                 onClick={() => setActiveTab('research')}
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${activeTab === 'research' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex-1 py-1 px-4 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'research' ? 'bg-[#139187] text-white' : 'text-gray-400 hover:text-white'}`}
                             >
                                 AUTO-RESEARCH
                             </button>
@@ -274,6 +316,29 @@ export default function KnowledgePage({ params }: { params: Promise<{ id: string
                                 >
                                     {isIngesting ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
                                     Process Transcript
+                                </button>
+                            </div>
+                        )}
+
+                        {activeTab === 'youtube' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-red-500/10 rounded-xl border border-red-500/20 flex items-center gap-3">
+                                    <Youtube className="text-red-500" size={16} />
+                                    <p className="text-xs text-red-500/80">The system will automatically extract and learn from the video's transcript.</p>
+                                </div>
+                                <input
+                                    value={youtubeUrl}
+                                    onChange={e => setYoutubeUrl(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#139187] transition-all"
+                                />
+                                <button
+                                    onClick={handleYoutubeSubmit}
+                                    disabled={isIngesting || !youtubeUrl}
+                                    className="w-full py-4 bg-gradient-to-r from-red-600 to-red-800 text-white font-bold rounded-xl shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isIngesting ? <Loader2 className="animate-spin" size={20} /> : <Search size={20} />}
+                                    Process Video
                                 </button>
                             </div>
                         )}
