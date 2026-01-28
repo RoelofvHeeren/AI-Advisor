@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         // 3. Embedding & Insertion (Sequential for rate safety)
         let processed = 0;
         for (const chunkContent of chunks) {
-            const result = await embeddingModel.embedContent({
+            const result = await (embeddingModel as any).embedContent({
                 content: { role: 'user', parts: [{ text: chunkContent }] },
                 outputDimensionality: 768
             });

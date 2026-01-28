@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         }
 
         // 1. Get embedding for the user's message
-        const embeddingResult = await embeddingModel.embedContent({
+        const embeddingResult = await (embeddingModel as any).embedContent({
             content: { role: 'user', parts: [{ text: message }] },
             outputDimensionality: 768
         });
