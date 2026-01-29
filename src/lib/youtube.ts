@@ -89,6 +89,4 @@ export async function getYouTubeTranscript(videoId: string) {
             throw new Error(`All transcript layers failed: ${error.message} | ${libError.message}`);
         }
     }
-
-    return null;
 }

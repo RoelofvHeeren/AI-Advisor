@@ -40,7 +40,7 @@ export async function GET(req: Request) {
         try {
             const testId = 'dQw4w9WgXcQ'; // Rick Astley - Always has global captions
             const transcript = await getYouTubeTranscript(testId);
-            results.tests.transcription_engine = transcript ? `Success (${transcript.substring(0, 30)}...)` : 'Failed (Returned null)';
+            results.tests.transcription_engine = transcript ? `Success (${transcript.substring(0, 30)}...)` : 'Failed (Empty result)';
         } catch (e: any) {
             results.tests.transcription_engine = `Exception: ${e.message}`;
         }
