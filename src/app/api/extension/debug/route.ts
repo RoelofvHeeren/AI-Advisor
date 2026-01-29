@@ -18,7 +18,8 @@ export async function GET(req: Request) {
         environment: {
             node_version: process.version,
             platform: process.platform,
-            railway: process.env.RAILWAY_ENVIRONMENT || 'local'
+            railway: process.env.RAILWAY_ENVIRONMENT || 'local',
+            debug_version: '1.1 (Detailed Errors Enabled)'
         },
         tests: {}
     };

@@ -126,7 +126,12 @@ export async function getYouTubeTranscript(videoId: string) {
         console.log('Layer 3: Attempting youtube-transcript library...');
         const { YoutubeTranscript } = await import('youtube-transcript');
         const ytTranscript = await YoutubeTranscript.fetchTranscript(videoId);
-        return ytTranscript.map(t => t.text).join(' ');
+        const text = ytTranscript.map(t => t.text).join(' ');
+        if (text.trim()) {
+            console.log('Layer 3 Success: Transcript retrieved via library.');
+            return text.trim();
+        }
+        throw new Error('Library returned empty transcript array');
     } catch (libError: any) {
         console.error('Layer 3 Failed:', libError.message);
         throw new Error(`ALL LAYERS FAILED. | L1: ${layer1Error} | L2: ${layer2Error} | L3: ${libError.message}`);
