@@ -86,45 +86,60 @@ export async function ingestContent(params: IngestParams) {
     textContent = textContent.replace(/\0/g, '');
 
     // 1. Create Document Entry
-    const { data: doc, error: docError } = await supabase
-        .from('documents')
-        .insert({
-            advisor_id: advisorId,
-            title: finalTitle,
-            content_type: type
-        })
-        .select()
-        .single();
+    let docId: string;
+    try {
+        const { data: doc, error: docError } = await supabase
+            .from('documents')
+            .insert({
+                advisor_id: advisorId,
+                title: finalTitle,
+                content_type: type
+            })
+            .select()
+            .single();
 
-    if (docError) throw docError;
+        if (docError) throw docError;
+        docId = doc.id;
+    } catch (e: any) {
+        throw new Error(`Trace [DB_DOC_CREATE]: ${e.message}`);
+    }
 
     // 2. Chunking
     const chunks: string[] = [];
-    const chunkSize = 1000;
-    const overlap = 200;
+    try {
+        const chunkSize = 1000;
+        const overlap = 200;
 
-    for (let i = 0; i < textContent.length; i += (chunkSize - overlap)) {
-        chunks.push(textContent.slice(i, i + chunkSize));
+        for (let i = 0; i < textContent.length; i += (chunkSize - overlap)) {
+            chunks.push(textContent.slice(i, i + chunkSize));
+        }
+    } catch (e: any) {
+        throw new Error(`Trace [CHUNKING]: ${e.message}`);
     }
 
     // 3. Embedding & Insertion
-    for (const chunkContent of chunks) {
-        const result = await (embeddingModel as any).embedContent({
-            content: { role: 'user', parts: [{ text: chunkContent }] },
-            outputDimensionality: 768
-        });
-        const embedding = result.embedding.values;
+    try {
+        for (const chunkContent of chunks) {
+            const result = await (embeddingModel as any).embedContent({
+                content: { role: 'user', parts: [{ text: chunkContent }] },
+                outputDimensionality: 768
+            });
+            const embedding = result.embedding.values;
 
-        await supabase.from('document_chunks').insert({
-            document_id: doc.id,
-            content: chunkContent,
-            embedding: embedding
-        });
+            const { error: chunkError } = await supabase.from('document_chunks').insert({
+                document_id: docId,
+                content: chunkContent,
+                embedding: embedding
+            });
+            if (chunkError) throw chunkError;
+        }
+    } catch (e: any) {
+        throw new Error(`Trace [EMBEDDING_DB]: ${e.message}`);
     }
 
     return {
         success: true,
-        docId: doc.id,
+        docId: docId,
         chunks: chunks.length
     };
 }
