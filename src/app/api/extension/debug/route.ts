@@ -15,6 +15,11 @@ export async function OPTIONS() {
 export async function GET(req: Request) {
     const results: any = {
         timestamp: new Date().toISOString(),
+        environment: {
+            node_version: process.version,
+            platform: process.platform,
+            railway: process.env.RAILWAY_ENVIRONMENT || 'local'
+        },
         tests: {}
     };
 
