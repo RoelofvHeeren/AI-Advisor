@@ -32,6 +32,7 @@ export async function POST(req: Request) {
         }
 
         const { advisorIds, items } = await req.json();
+        const baseUrl = new URL(req.url).origin;
 
         if (!advisorIds || !Array.isArray(advisorIds) || advisorIds.length === 0) {
             return NextResponse.json({ error: 'At least one advisor required' }, { status: 400, headers: corsHeaders });
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
                     formData.append('url', url);
                     if (title) formData.append('title', title);
 
-                    const ingestRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ingest`, {
+                    const ingestRes = await fetch(`${baseUrl}/api/ingest`, {
                         method: 'POST',
                         body: formData
                     });

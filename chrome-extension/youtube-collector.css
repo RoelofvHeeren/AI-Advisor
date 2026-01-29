@@ -1,3 +1,17 @@
+/* Multi-Select Interactive Improvements */
+.ai-advisor-selection-mode #thumbnail,
+.ai-advisor-selection-mode a#video-title-link,
+.ai-advisor-selection-mode a.ytd-compact-video-renderer {
+    pointer-events: none !important;
+}
+
+.ai-advisor-selection-mode ytd-video-renderer,
+.ai-advisor-selection-mode ytd-grid-video-renderer,
+.ai-advisor-selection-mode ytd-compact-video-renderer,
+.ai-advisor-selection-mode ytd-rich-item-renderer {
+    cursor: copy !important;
+}
+
 /* YouTube Selection Mode */
 .ai-advisor-video-selected {
     outline: 4px solid #139187 !important;
