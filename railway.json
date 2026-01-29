@@ -10,7 +10,6 @@
             "phases": {
                 "setup": {
                     "nixPkgs": [
-                        "python3",
                         "ffmpeg"
                     ]
                 },
