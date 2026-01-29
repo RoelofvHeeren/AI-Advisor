@@ -1,0 +1,142 @@
+/* YouTube Multi-Select Overlay Styles */
+.ai-advisor-select-overlay {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    padding: 8px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-advisor-select-overlay:hover {
+    background: rgba(19, 145, 135, 0.9);
+}
+
+.ai-advisor-select-overlay.selected {
+    background: rgba(19, 145, 135, 0.9);
+    border: 2px solid #139187;
+}
+
+.ai-advisor-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #139187;
+}
+
+/* Floating Action Button */
+#ai-advisor-fab {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    z-index: 10000;
+    background: linear-gradient(135deg, #139187, #0d6b63);
+    border-radius: 16px;
+    padding: 16px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.fab-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.fab-count {
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.fab-add-btn,
+.fab-cancel-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.fab-add-btn {
+    background: white;
+    color: #139187;
+}
+
+.fab-add-btn:hover {
+    transform: scale(1.05);
+}
+
+.fab-cancel-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.fab-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Save Button on Video Page */
+.ai-advisor-save-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: rgba(19, 145, 135, 0.1);
+    border: 1px solid rgba(19, 145, 135, 0.3);
+    border-radius: 18px;
+    color: #139187;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 8px;
+}
+
+.ai-advisor-save-button:hover {
+    background: rgba(19, 145, 135, 0.2);
+    transform: translateY(-2px);
+}
+
+.ai-advisor-save-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Notification */
+.ai-advisor-notification {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 10000;
+    background: linear-gradient(135deg, #139187, #0d6b63);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.3s ease-out;
+}
+
+.ai-advisor-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}

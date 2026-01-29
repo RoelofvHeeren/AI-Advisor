@@ -1,0 +1,45 @@
+{
+    "manifest_version": 3,
+    "name": "AI Advisor Knowledge Collector",
+    "version": "1.0.0",
+    "description": "Quickly save YouTube videos, web pages, and PDFs to your AI Advisors",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://www.youtube.com/*",
+        "https://youtu.be/*",
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icon16.png",
+            "48": "icon48.png",
+            "128": "icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.youtube.com/*"
+            ],
+            "js": [
+                "youtube-collector.js"
+            ],
+            "css": [
+                "youtube-collector.css"
+            ]
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    }
+}
