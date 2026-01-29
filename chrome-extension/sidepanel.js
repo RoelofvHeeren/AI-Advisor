@@ -278,12 +278,24 @@ saveToAdvisorsBtn.addEventListener('click', async () => {
 
         const result = await response.json();
 
-        showStatus(`✓ Successfully saved ${result.successful} items!`, 'success');
+        if (result.successful === result.completed) {
+            showStatus(`✓ Successfully saved all ${result.successful} items!`, 'success');
+        } else {
+            const failedCount = result.completed - result.successful;
+            const errors = result.results
+                .filter(r => !r.success)
+                .map(r => r.error)
+                .slice(0, 3)
+                .join(', ');
+            showStatus(`⚠ Saved ${result.successful} items. ${failedCount} failed: ${errors}`, 'error');
+        }
 
-        // Clear queue
-        queue = [];
-        saveQueue();
-        updateQueueUI();
+        // Clear queue ONLY if some items were successful
+        if (result.successful > 0) {
+            queue = [];
+            saveQueue();
+            updateQueueUI();
+        }
 
         // Reset selections
         selectedAdvisors.clear();

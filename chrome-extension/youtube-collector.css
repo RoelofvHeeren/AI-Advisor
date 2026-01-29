@@ -1,15 +1,22 @@
 /* Multi-Select Interactive Improvements */
 .ai-advisor-selection-mode #thumbnail,
 .ai-advisor-selection-mode a#video-title-link,
-.ai-advisor-selection-mode a.ytd-compact-video-renderer {
+.ai-advisor-selection-mode a.ytd-compact-video-renderer,
+.ai-advisor-selection-mode ytd-thumbnail,
+.ai-advisor-selection-mode #hover-overlays,
+.ai-advisor-selection-mode #metadata-line,
+.ai-advisor-selection-mode #video-title,
+.ai-advisor-selection-mode .style-scope.ytd-video-meta-block {
     pointer-events: none !important;
 }
 
 .ai-advisor-selection-mode ytd-video-renderer,
 .ai-advisor-selection-mode ytd-grid-video-renderer,
 .ai-advisor-selection-mode ytd-compact-video-renderer,
-.ai-advisor-selection-mode ytd-rich-item-renderer {
+.ai-advisor-selection-mode ytd-rich-item-renderer,
+.ai-advisor-selection-mode ytd-rich-grid-media {
     cursor: copy !important;
+    user-select: none !important;
 }
 
 /* YouTube Selection Mode */
