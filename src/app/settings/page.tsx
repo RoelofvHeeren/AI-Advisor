@@ -31,25 +31,41 @@ export default function SettingsPage() {
 
         setLoading(true);
 
-        // Generate a secure random key
-        const key = 'aiadv_' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
+        try {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
 
-        const { error } = await supabase
-            .from('api_keys')
-            .insert({
-                key,
-                name: newKeyName,
-                is_active: true
-            });
+            if (!user) {
+                alert('You must be logged in to generate API keys');
+                setLoading(false);
+                return;
+            }
 
-        if (!error) {
-            setGeneratedKey(key);
-            setNewKeyName('');
-            fetchApiKeys();
-        } else {
-            alert('Failed to generate API key');
+            // Generate a secure random key
+            const key = 'aiadv_' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+
+            const { error } = await supabase
+                .from('api_keys')
+                .insert({
+                    user_id: user.id,
+                    key,
+                    name: newKeyName,
+                    is_active: true
+                });
+
+            if (!error) {
+                setGeneratedKey(key);
+                setNewKeyName('');
+                fetchApiKeys();
+            } else {
+                console.error('API key generation error:', error);
+                alert('Failed to generate API key: ' + error.message);
+            }
+        } catch (err: any) {
+            console.error('Unexpected error:', err);
+            alert('Failed to generate API key: ' + err.message);
         }
 
         setLoading(false);
