@@ -98,16 +98,24 @@ function detectPageType(tab) {
         title: tab.title
     };
 
-    if (tab.url.includes('youtube.com/watch')) {
-        pageTypeDiv.textContent = 'YOUTUBE VIDEO';
+    if (tab.url.includes('youtube.com/') || tab.url.includes('youtu.be/')) {
+        pageTypeDiv.textContent = 'YOUTUBE';
         pageTypeDiv.style.background = 'rgba(255, 0, 0, 0.2)';
         pageTypeDiv.style.color = '#ff0000';
         youtubeControls.classList.remove('hidden');
 
-        // Extract video ID
+        // Extract video ID if watching a specific video
         const urlParams = new URLSearchParams(new URL(tab.url).search);
         currentPage.videoId = urlParams.get('v');
         currentPage.type = 'youtube';
+
+        // Update title if we have a video ID, otherwise just generic
+        if (currentPage.videoId) {
+            pageTypeDiv.textContent = 'WATCHING VIDEO';
+        } else {
+            pageTypeDiv.textContent = 'BROWSING YOUTUBE';
+            document.getElementById('addCurrentVideo').classList.add('hidden');
+        }
     } else if (tab.url.endsWith('.pdf')) {
         pageTypeDiv.textContent = 'PDF DOCUMENT';
         pageTypeDiv.style.background = 'rgba(255, 100, 100, 0.2)';

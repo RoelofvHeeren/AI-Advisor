@@ -15,45 +15,77 @@ function enableMultiSelectMode() {
     multiSelectMode = true;
 
     // Add overlay to all video thumbnails
-    const videoElements = document.querySelectorAll('ytd-video-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer');
+    // Target all types of video renderers including search results and channel videos
+    const videoSelectors = [
+        'ytd-video-renderer',           // Search results
+        'ytd-grid-video-renderer',      // Channel videos
+        'ytd-compact-video-renderer',   // Sidebar recommendations
+        'ytd-rich-item-renderer'        // Home screen
+    ];
 
-    videoElements.forEach(video => {
-        const link = video.querySelector('a#thumbnail');
-        if (!link) return;
+    const findVideos = () => {
+        const videos = document.querySelectorAll(videoSelectors.join(','));
+        videos.forEach(video => {
+            if (video.dataset.aiAdvisorProcessed) return;
 
-        const videoUrl = link.href;
+            const link = video.querySelector('a#thumbnail');
+            if (!link) return;
 
-        // Create checkbox overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'ai-advisor-select-overlay';
-        overlay.innerHTML = `
-            <input type="checkbox" class="ai-advisor-checkbox" data-url="${videoUrl}">
-        `;
+            const videoUrl = link.href;
+            if (!videoUrl || !videoUrl.includes('/watch?v=')) return;
 
-        const thumbnail = video.querySelector('#thumbnail');
-        if (thumbnail) {
-            thumbnail.style.position = 'relative';
-            thumbnail.appendChild(overlay);
+            // Mark as processed
+            video.dataset.aiAdvisorProcessed = 'true';
 
-            overlay.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            // Create checkbox overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'ai-advisor-select-overlay';
+            overlay.innerHTML = `
+                <input type="checkbox" class="ai-advisor-checkbox" data-url="${videoUrl}">
+            `;
 
-                const checkbox = overlay.querySelector('input');
-                checkbox.checked = !checkbox.checked;
+            const thumbnail = video.querySelector('#thumbnail');
+            if (thumbnail) {
+                // Ensure thumbnail container is positioned efficiently
+                // thumbnail.style.position = 'relative'; // YouTube usually sets this, but be careful overriding
 
-                if (checkbox.checked) {
-                    selectedVideos.add(videoUrl);
-                    overlay.classList.add('selected');
-                } else {
-                    selectedVideos.delete(videoUrl);
-                    overlay.classList.remove('selected');
-                }
+                // Prepend to ensure it sits on top
+                thumbnail.appendChild(overlay);
 
-                updateSelectionCount();
-            });
-        }
+                overlay.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const checkbox = overlay.querySelector('input');
+                    checkbox.checked = !checkbox.checked;
+
+                    if (checkbox.checked) {
+                        selectedVideos.add(videoUrl);
+                        overlay.classList.add('selected');
+                    } else {
+                        selectedVideos.delete(videoUrl);
+                        overlay.classList.remove('selected');
+                    }
+
+                    updateSelectionCount();
+                });
+            }
+        });
+    };
+
+    // Run initially
+    findVideos();
+
+    // Set up observer for infinite scrolling / dynamic loading
+    const observer = new MutationObserver((mutations) => {
+        // Debounce slightly or just run check
+        findVideos();
     });
+
+    const content = document.querySelector('#content');
+    if (content) {
+        observer.observe(content, { childList: true, subtree: true });
+    }
 
     // Add floating action button
     createFloatingActionButton();
