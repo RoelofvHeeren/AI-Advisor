@@ -41,13 +41,13 @@ export async function GET(req: Request) {
             results.tests.youtube_head = `Fetch Exception: ${e.message}`;
         }
 
-        // Test 3: Transcription Logic Test (Small video)
+        // Test 3: Transcription Logic Test
         try {
-            const testId = 'dQw4w9WgXcQ'; // Rick Astley - Always has global captions
+            const testId = 'jANz5D6KzKw'; // Use the video the user is testing
             const transcript = await getYouTubeTranscript(testId);
             results.tests.transcription_engine = transcript ? `Success (${transcript.substring(0, 30)}...)` : 'Failed (Empty result)';
         } catch (e: any) {
-            results.tests.transcription_engine = `Exception: ${e.message}`;
+            results.tests.transcription_engine = `Error: ${e.message}`;
         }
 
         return NextResponse.json(results, { headers: corsHeaders });
