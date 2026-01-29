@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase-server';
+import { getYouTubeTranscript } from '@/lib/youtube';
 import { embeddingModel } from '@/lib/gemini';
 import * as cheerio from 'cheerio';
 
@@ -36,23 +37,29 @@ export async function POST(req: Request) {
             const url = formData.get('url') as string;
             if (!url) throw new Error('Missing YouTube URL');
 
-            console.log(`Starting YouTube transcript fetch for: ${url}`);
-            const { YoutubeTranscript } = await import('youtube-transcript');
+            console.log(`Starting robust YouTube transcript fetch for: ${url}`);
 
-            try {
-                const transcript = await YoutubeTranscript.fetchTranscript(url, {
-                    lang: 'en'
-                });
-                textContent = transcript.map(t => t.text).join(' ');
-            } catch (ytError: any) {
-                console.warn('English transcript failed, trying default...', ytError.message);
+            // Extract video ID
+            const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|\/v\/|shorts\/|embed\/))([^?&"'>]+)/);
+            const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+            if (!videoId) {
+                throw new Error('Could not extract Video ID from URL. Use a standard youtube.com or youtu.be link.');
+            }
+
+            const transcript = await getYouTubeTranscript(videoId);
+            if (!transcript) {
+                // Final fallback using the original library if manual fails
                 try {
-                    const transcript = await YoutubeTranscript.fetchTranscript(url);
-                    textContent = transcript.map(t => t.text).join(' ');
-                } catch (innerError: any) {
-                    console.error('Final YouTube fetch failure:', innerError.message);
-                    throw new Error(`YouTube Transcript Error: ${innerError.message}. Make sure the video has captions enabled.`);
+                    console.log('Manual fetch failed, trying library fallback...');
+                    const { YoutubeTranscript } = await import('youtube-transcript');
+                    const ytTranscript = await YoutubeTranscript.fetchTranscript(url);
+                    textContent = ytTranscript.map(t => t.text).join(' ');
+                } catch (e: any) {
+                    throw new Error(`Failed to retrieve transcript: ${e.message}. The video might not have captions enabled.`);
                 }
+            } else {
+                textContent = transcript;
             }
 
             if (!title || title === 'General Knowledge') {
