@@ -8,18 +8,38 @@ export async function getYouTubeTranscript(videoId: string) {
     // Layer 1: Try Python bridge (Gold Standard)
     try {
         console.log(`Layer 1: Attempting Python bridge for ${videoId}...`);
-        // Note: Railway Railpack installs python/pip automatically if requirements.txt exists
         const scriptPath = path.join(process.cwd(), 'scripts', 'get_transcript.py');
-        const { stdout } = await execAsync(`python3 "${scriptPath}" ${videoId}`);
-        const result = JSON.parse(stdout);
 
-        if (result.success && result.transcript) {
-            console.log('Layer 1 Success: Transcript retrieved via Python.');
-            return result.transcript;
+        // Try different python binaries (common in different environments)
+        const pythonBinaries = ['python3', 'python', '/opt/venv/bin/python'];
+        let stdout = '';
+        let success = false;
+        let lastError = '';
+
+        for (const bin of pythonBinaries) {
+            try {
+                const { stdout: res } = await execAsync(`${bin} "${scriptPath}" ${videoId}`, { timeout: 15000 });
+                stdout = res;
+                success = true;
+                break;
+            } catch (e: any) {
+                lastError = e.message;
+                continue;
+            }
         }
-        console.warn('Layer 1 Failed:', result.error);
+
+        if (success) {
+            const result = JSON.parse(stdout);
+            if (result.success && result.transcript) {
+                console.log('Layer 1 Success: Transcript retrieved via Python.');
+                return result.transcript;
+            }
+            console.warn('Layer 1 Failed (Script Error):', result.error);
+        } else {
+            console.warn('Layer 1 Failed (Binary Error):', lastError);
+        }
     } catch (error: any) {
-        console.warn('Layer 1 Exception (likely Python not available locally):', error.message);
+        console.warn('Layer 1 Exception:', error.message);
     }
 
     // Layer 2: Manual JS Scraper (Robust Fallback)
