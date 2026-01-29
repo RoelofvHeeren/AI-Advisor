@@ -19,12 +19,30 @@
     user-select: none !important;
 }
 
+/* Selection Click Overlay */
+.ai-advisor-selection-mode ytd-video-renderer::before,
+.ai-advisor-selection-mode ytd-grid-video-renderer::before,
+.ai-advisor-selection-mode ytd-compact-video-renderer::before,
+.ai-advisor-selection-mode ytd-rich-item-renderer::before,
+.ai-advisor-selection-mode ytd-rich-grid-media::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99999;
+    background: transparent;
+    cursor: copy;
+}
+
 /* YouTube Selection Mode */
 .ai-advisor-video-selected {
-    outline: 4px solid #139187 !important;
-    outline-offset: -4px;
-    background: rgba(19, 145, 135, 0.1) !important;
+    outline: 6px solid #139187 !important;
+    outline-offset: -6px;
+    background: rgba(19, 145, 135, 0.15) !important;
     position: relative;
+    z-index: 100000;
 }
 
 .ai-advisor-video-selected::after {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase-server';
+import { ingestContent } from '@/lib/ingest-service';
 
 // Helper for CORS headers
 const corsHeaders = {
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
         }
 
         const { advisorIds, items } = await req.json();
-        const baseUrl = new URL(req.url).origin;
 
         if (!advisorIds || !Array.isArray(advisorIds) || advisorIds.length === 0) {
             return NextResponse.json({ error: 'At least one advisor required' }, { status: 400, headers: corsHeaders });
@@ -42,7 +42,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'At least one item required' }, { status: 400, headers: corsHeaders });
         }
 
-        // Create a batch job ID
         const jobId = crypto.randomUUID();
         const results = [];
 
@@ -55,39 +54,24 @@ export async function POST(req: Request) {
                 continue;
             }
 
-            // Process for each advisor
+            // Process for each advisor directly using the service (NO INTERNAL FETCH)
             for (const advisorId of advisorIds) {
                 try {
-                    // Call the existing ingest API
-                    const formData = new FormData();
-                    formData.append('advisorId', advisorId);
-                    formData.append('type', type);
-                    formData.append('url', url);
-                    if (title) formData.append('title', title);
-
-                    const ingestRes = await fetch(`${baseUrl}/api/ingest`, {
-                        method: 'POST',
-                        body: formData
+                    const result = await ingestContent({
+                        advisorId,
+                        type,
+                        url,
+                        title
                     });
 
-                    const ingestData = await ingestRes.json();
-
-                    if (ingestRes.ok) {
-                        results.push({
-                            url,
-                            advisorId,
-                            success: true,
-                            chunks: ingestData.chunks
-                        });
-                    } else {
-                        results.push({
-                            url,
-                            advisorId,
-                            success: false,
-                            error: ingestData.error
-                        });
-                    }
+                    results.push({
+                        url,
+                        advisorId,
+                        success: true,
+                        chunks: result.chunks
+                    });
                 } catch (error: any) {
+                    console.error(`Ingestion failed for item ${url}:`, error);
                     results.push({
                         url,
                         advisorId,

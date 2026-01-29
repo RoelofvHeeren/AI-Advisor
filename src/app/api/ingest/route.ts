@@ -1,133 +1,26 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase-server';
-import { getYouTubeTranscript } from '@/lib/youtube';
-import { embeddingModel } from '@/lib/gemini';
-import * as cheerio from 'cheerio';
+import { ingestContent } from '@/lib/ingest-service';
 
 export async function POST(req: Request) {
     try {
         const formData = await req.formData();
         const advisorId = formData.get('advisorId') as string;
-        const type = formData.get('type') as string; // 'text' or 'pdf'
-        const title = formData.get('title') as string || 'General Knowledge';
+        const type = formData.get('type') as any; // 'text', 'web', 'youtube', 'pdf'
+        const title = formData.get('title') as string;
+        const content = formData.get('content') as string;
+        const url = formData.get('url') as string;
+        const file = formData.get('file') as File;
 
-        if (!advisorId) {
-            return NextResponse.json({ error: 'Missing advisorId' }, { status: 400 });
-        }
-
-        let textContent = '';
-
-        if (type === 'text') {
-            textContent = formData.get('content') as string;
-        } else if (type === 'web') {
-            const url = formData.get('url') as string;
-            const res = await fetch(url);
-            const html = await res.text();
-            const $ = cheerio.load(html);
-
-            // Basic text extraction: focus on substantive content
-            $('script, style, nav, footer, header').remove();
-            textContent = $('body').text().replace(/\s+/g, ' ').trim();
-
-            if (!title || title === url) {
-                const pageTitle = $('title').text();
-                if (pageTitle) (formData as any).set('title', pageTitle);
-            }
-        } else if (type === 'youtube') {
-            const url = formData.get('url') as string;
-            if (!url) throw new Error('Missing YouTube URL');
-
-            console.log(`Starting robust YouTube transcript fetch for: ${url}`);
-
-            // Extract video ID
-            const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|\/v\/|shorts\/|embed\/))([^?&"'>]+)/);
-            const videoId = videoIdMatch ? videoIdMatch[1] : null;
-
-            if (!videoId) {
-                throw new Error('Could not extract Video ID from URL. Use a standard youtube.com or youtu.be link.');
-            }
-
-            const transcript = await getYouTubeTranscript(videoId);
-            if (!transcript) {
-                // Final fallback using the original library if manual fails
-                try {
-                    console.log('Manual fetch failed, trying library fallback...');
-                    const { YoutubeTranscript } = await import('youtube-transcript');
-                    const ytTranscript = await YoutubeTranscript.fetchTranscript(url);
-                    textContent = ytTranscript.map(t => t.text).join(' ');
-                } catch (e: any) {
-                    throw new Error(`Failed to retrieve transcript: ${e.message}. The video might not have captions enabled.`);
-                }
-            } else {
-                textContent = transcript;
-            }
-
-            if (!title || title === 'General Knowledge') {
-                (formData as any).set('title', `YouTube Transcript: ${url}`);
-            }
-        } else {
-            const file = formData.get('file') as File;
-            if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            // Dynamic import to avoid build-time issues
-            const pdf = (await import('pdf-parse')).default;
-            const data = await pdf(buffer);
-            textContent = data.text;
-        }
-
-        if (!textContent) {
-            return NextResponse.json({ error: 'No content found to ingest' }, { status: 400 });
-        }
-
-        // Sanitize
-        textContent = textContent.replace(/\0/g, '');
-
-        // 1. Create Document Entry
-        const { data: doc, error: docError } = await supabase
-            .from('documents')
-            .insert({
-                advisor_id: advisorId,
-                title: title,
-                content_type: type
-            })
-            .select()
-            .single();
-
-        if (docError) throw docError;
-
-        // 2. Chunking
-        const chunks: string[] = [];
-        const chunkSize = 1000;
-        const overlap = 200;
-
-        for (let i = 0; i < textContent.length; i += (chunkSize - overlap)) {
-            chunks.push(textContent.slice(i, i + chunkSize));
-        }
-
-        // 3. Embedding & Insertion (Sequential for rate safety)
-        let processed = 0;
-        for (const chunkContent of chunks) {
-            const result = await (embeddingModel as any).embedContent({
-                content: { role: 'user', parts: [{ text: chunkContent }] },
-                outputDimensionality: 768
-            });
-            const embedding = result.embedding.values;
-
-            await supabase.from('document_chunks').insert({
-                document_id: doc.id,
-                content: chunkContent,
-                embedding: embedding
-            });
-            processed++;
-        }
-
-        return NextResponse.json({
-            success: true,
-            chunks: chunks.length,
-            docId: doc.id
+        const result = await ingestContent({
+            advisorId,
+            type,
+            title,
+            content,
+            url,
+            file: file || undefined
         });
+
+        return NextResponse.json(result);
 
     } catch (error: any) {
         console.error('Ingestion error:', error);
