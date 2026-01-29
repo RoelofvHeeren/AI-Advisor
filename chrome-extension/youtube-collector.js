@@ -56,7 +56,45 @@ function enableMultiSelectMode() {
     // Add floating action button
     createFloatingActionButton();
 
+    // Inject physical overlays into existing thumbnails for better click trapping
+    injectOverlays();
+
+    // Set up observer to inject overlays into new thumbnails
+    const observer = new MutationObserver(() => injectOverlays());
+    observer.observe(document.body, { childList: true, subtree: true });
+    window._aiAdvisorObserver = observer;
+
     showNotification('Multi-select mode active. Click any video to select it!');
+}
+
+function injectOverlays() {
+    const videoSelectors = [
+        'ytd-video-renderer',           // Search results
+        'ytd-grid-video-renderer',      // Channel videos
+        'ytd-compact-video-renderer',   // Sidebar recommendations
+        'ytd-rich-item-renderer',        // Home screen
+        'ytd-rich-grid-media'
+    ];
+
+    const videos = document.querySelectorAll(videoSelectors.join(','));
+    videos.forEach(video => {
+        if (video.querySelector('.ai-advisor-click-trap')) return;
+
+        const trap = document.createElement('div');
+        trap.className = 'ai-advisor-click-trap';
+        trap.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:999999;background:transparent;cursor:copy;';
+
+        // Ensure parent is relative or finding a good container
+        const thumbnail = video.querySelector('#thumbnail') || video;
+        if (thumbnail) {
+            thumbnail.appendChild(trap);
+            trap.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleVideoSelection(video);
+            });
+        }
+    });
 }
 
 function createModeBanner() {

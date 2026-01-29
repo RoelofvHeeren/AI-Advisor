@@ -24,46 +24,52 @@ export async function ingestContent(params: IngestParams) {
         textContent = content || '';
     } else if (type === 'web') {
         if (!url) throw new Error('Missing URL for web ingestion');
-        const res = await fetch(url);
-        const html = await res.text();
-        const $ = cheerio.load(html);
+        try {
+            console.log(`[Ingest] Fetching web page: ${url}`);
+            const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+            if (!res.ok) throw new Error(`Web fetch failed with status ${res.status}`);
+            const html = await res.text();
+            const $ = cheerio.load(html);
 
-        // Basic text extraction: focus on substantive content
-        $('script, style, nav, footer, header').remove();
-        textContent = $('body').text().replace(/\s+/g, ' ').trim();
+            // Basic text extraction: focus on substantive content
+            $('script, style, nav, footer, header').remove();
+            textContent = $('body').text().replace(/\s+/g, ' ').trim();
 
-        if (!finalTitle || finalTitle === url) {
-            finalTitle = $('title').text() || url;
+            if (!finalTitle || finalTitle === url) {
+                finalTitle = $('title').text() || url;
+            }
+        } catch (e: any) {
+            console.error(`[Ingest] Web fetch error for ${url}:`, e);
+            throw new Error(`Web Page Fetch Error: ${e.message}`);
         }
     } else if (type === 'youtube') {
         if (!url) throw new Error('Missing YouTube URL');
+        try {
+            console.log(`[Ingest] Processing YouTube: ${url}`);
+            // Extract video ID
+            const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|\/v\/|shorts\/|embed\/))([^?&"'>]+)/);
+            const videoId = videoIdMatch ? videoIdMatch[1] : null;
 
-        // Extract video ID
-        const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|\/v\/|shorts\/|embed\/))([^?&"'>]+)/);
-        const videoId = videoIdMatch ? videoIdMatch[1] : null;
-
-        if (!videoId) {
-            throw new Error('Could not extract Video ID from URL.');
-        }
-
-        const transcript = await getYouTubeTranscript(videoId);
-        if (!transcript) {
-            // Library fallback
-            try {
-                const { YoutubeTranscript } = await import('youtube-transcript');
-                const ytTranscript = await YoutubeTranscript.fetchTranscript(url);
-                textContent = ytTranscript.map(t => t.text).join(' ');
-            } catch (e: any) {
-                throw new Error(`Failed to retrieve transcript: ${e.message}. The video might not have captions enabled.`);
+            if (!videoId) {
+                throw new Error('Could not extract Video ID from URL.');
             }
-        } else {
-            textContent = transcript;
-        }
 
-        if (!finalTitle || finalTitle === 'General Knowledge' || finalTitle === 'YouTube Video') {
-            finalTitle = `YouTube Transcript: ${url}`;
+            const transcript = await getYouTubeTranscript(videoId);
+            if (!transcript) {
+                throw new Error('No transcript found (all layers failed). The video might not have captions.');
+            } else {
+                textContent = transcript;
+            }
+
+            if (!finalTitle || finalTitle === 'General Knowledge' || finalTitle === 'YouTube Video') {
+                finalTitle = `YouTube Transcript: ${url}`;
+            }
+        } catch (e: any) {
+            console.error(`[Ingest] YouTube error for ${url}:`, e);
+            throw new Error(`YouTube Process Error: ${e.message}`);
         }
-    } else if (type === 'pdf') {
+    }
+    else if (type === 'pdf') {
         if (!file) throw new Error('No PDF file provided');
         const buffer = file instanceof Buffer ? file : Buffer.from(await (file as Blob).arrayBuffer());
 

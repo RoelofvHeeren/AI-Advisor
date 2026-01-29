@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "AI Advisor Knowledge Collector",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "Quickly save YouTube videos, web pages, and PDFs to your AI Advisors",
     "permissions": [
         "activeTab",
