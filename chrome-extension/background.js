@@ -1,19 +1,33 @@
 // Background service worker for Chrome extension
 
-// Handle extension icon click
-chrome.action.onClicked.addListener((tab) => {
-    chrome.action.openPopup();
-});
+// Handle extension icon click - toggles side panel
+chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error(error));
 
-// Listen for messages from content scripts and popup
+// Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'openPopup') {
-        chrome.action.openPopup();
+    // If a script wants to open the panel programmatically (e.g. from the "Save" button injection)
+    if (message.action === 'openPopup' && sender.tab) {
+        // We can't programmatically open side panel easily without user gesture in V3, 
+        // but 'openPanelOnActionClick' handles the main icon.
+        // For the injected button, we might need to instruct user or use specific API if available (limited support).
+        console.log('Open request received');
     }
 
     if (message.action === 'addToQueue') {
-        // Forward to popup if it's open
-        chrome.runtime.sendMessage(message);
+        // Forward to sidepanel if it's open
+        chrome.runtime.sendMessage(message).catch(() => {
+            // Panel might be closed, that's fine - we should probably store in storage then
+            chrome.storage.local.get(['queue'], (result) => {
+                const queue = result.queue || [];
+                // Check if exists
+                if (!queue.find(i => i.url === message.item.url)) {
+                    queue.push(message.item);
+                    chrome.storage.local.set({ queue });
+                }
+            });
+        });
     }
 });
 

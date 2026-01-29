@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <style>
@@ -8,25 +9,26 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            width: 400px;
-            min-height: 500px;
+            /* width: 100%; Side panels adjust to user width */
+            height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #fff;
             padding: 20px;
+            overflow-y: auto;
         }
-        
+
         .header {
             display: flex;
             align-items: center;
             gap: 12px;
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .logo {
             width: 40px;
             height: 40px;
@@ -38,24 +40,24 @@
             font-weight: bold;
             font-size: 20px;
         }
-        
+
         h1 {
             font-size: 18px;
             font-weight: 600;
         }
-        
+
         .auth-section {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 20px;
         }
-        
+
         .auth-section.authenticated {
-            background: rgba(19,145,135,0.1);
-            border: 1px solid rgba(19,145,135,0.3);
+            background: rgba(19, 145, 135, 0.1);
+            border: 1px solid rgba(19, 145, 135, 0.3);
         }
-        
+
         label {
             display: block;
             font-size: 12px;
@@ -64,23 +66,23 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         input {
             width: 100%;
             padding: 10px 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             color: #fff;
             font-size: 14px;
             margin-bottom: 12px;
         }
-        
+
         input:focus {
             outline: none;
             border-color: #139187;
         }
-        
+
         button {
             width: 100%;
             padding: 12px;
@@ -93,28 +95,28 @@
             font-size: 14px;
             transition: transform 0.2s;
         }
-        
+
         button:hover {
             transform: translateY(-2px);
         }
-        
+
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
-        
+
         .current-page {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 20px;
         }
-        
+
         .page-type {
             display: inline-block;
             padding: 4px 12px;
-            background: rgba(19,145,135,0.2);
+            background: rgba(19, 145, 135, 0.2);
             border-radius: 6px;
             font-size: 11px;
             text-transform: uppercase;
@@ -123,14 +125,14 @@
             color: #139187;
             font-weight: 600;
         }
-        
+
         .page-title {
             font-size: 14px;
             font-weight: 500;
             margin-bottom: 8px;
             line-height: 1.4;
         }
-        
+
         .page-url {
             font-size: 11px;
             color: #666;
@@ -138,19 +140,19 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
+
         .advisor-selector {
             margin-bottom: 20px;
         }
-        
+
         .advisor-list {
             max-height: 200px;
             overflow-y: auto;
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
             padding: 8px;
         }
-        
+
         .advisor-item {
             display: flex;
             align-items: center;
@@ -160,16 +162,16 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        
+
         .advisor-item:hover {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
         }
-        
+
         .advisor-item input[type="checkbox"] {
             width: auto;
             margin: 0;
         }
-        
+
         .advisor-avatar {
             width: 32px;
             height: 32px;
@@ -181,18 +183,18 @@
             font-weight: 600;
             font-size: 12px;
         }
-        
+
         .advisor-name {
             flex: 1;
             font-size: 14px;
         }
-        
+
         .queue-section {
             margin-bottom: 20px;
         }
-        
+
         .queue-item {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 8px;
@@ -200,7 +202,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .queue-item-title {
             font-size: 13px;
             flex: 1;
@@ -208,7 +210,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
+
         .remove-btn {
             background: none;
             border: none;
@@ -218,7 +220,7 @@
             font-size: 12px;
             width: auto;
         }
-        
+
         .status {
             padding: 12px;
             border-radius: 8px;
@@ -226,52 +228,53 @@
             margin-top: 12px;
             text-align: center;
         }
-        
+
         .status.success {
-            background: rgba(19,145,135,0.2);
+            background: rgba(19, 145, 135, 0.2);
             color: #139187;
         }
-        
+
         .status.error {
-            background: rgba(255,68,68,0.2);
+            background: rgba(255, 68, 68, 0.2);
             color: #ff4444;
         }
-        
+
         .status.loading {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: #999;
         }
-        
+
         .hidden {
             display: none;
         }
-        
+
         .youtube-controls {
             margin-top: 12px;
         }
-        
+
         .youtube-controls button {
             margin-bottom: 8px;
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="logo">🧠</div>
         <h1>AI Advisor</h1>
     </div>
-    
+
     <!-- Authentication Section -->
     <div id="authSection" class="auth-section">
         <label>Platform URL</label>
         <input type="text" id="platformUrl" placeholder="https://your-platform.railway.app" />
-        
+
         <label>API Key</label>
         <input type="password" id="apiKey" placeholder="Your API key" />
-        
+
         <button id="saveAuth">Save Credentials</button>
     </div>
-    
+
     <!-- Main Content (hidden until authenticated) -->
     <div id="mainContent" class="hidden">
         <!-- Current Page Info -->
@@ -280,19 +283,19 @@
             <div class="page-title" id="pageTitle">Loading...</div>
             <div class="page-url" id="pageUrl"></div>
         </div>
-        
+
         <!-- YouTube Specific Controls -->
         <div id="youtubeControls" class="youtube-controls hidden">
             <button id="enableMultiSelect">Enable Multi-Select Mode</button>
             <button id="addCurrentVideo">Add Current Video</button>
         </div>
-        
+
         <!-- Queue -->
         <div id="queueSection" class="queue-section hidden">
             <label>Queue (<span id="queueCount">0</span>)</label>
             <div id="queueList"></div>
         </div>
-        
+
         <!-- Advisor Selector -->
         <div class="advisor-selector">
             <label>Select Advisors</label>
@@ -302,14 +305,15 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Actions -->
         <button id="saveToAdvisors" disabled>Save to Selected Advisors</button>
-        
+
         <!-- Status -->
         <div id="status" class="status hidden"></div>
     </div>
-    
+
     <script src="popup.js"></script>
 </body>
+
 </html>

@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase-server';
 
+// Helper for CORS headers
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+};
+
+export async function OPTIONS() {
+    return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
     try {
         const apiKey = req.headers.get('x-api-key');
 
         if (!apiKey) {
-            return NextResponse.json({ error: 'API key required' }, { status: 401 });
+            return NextResponse.json({ error: 'API key required' }, { status: 401, headers: corsHeaders });
         }
 
         // Verify API key
@@ -17,17 +28,17 @@ export async function POST(req: Request) {
             .single();
 
         if (keyError || !keyData || !keyData.is_active) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401, headers: corsHeaders });
         }
 
         const { advisorIds, items } = await req.json();
 
         if (!advisorIds || !Array.isArray(advisorIds) || advisorIds.length === 0) {
-            return NextResponse.json({ error: 'At least one advisor required' }, { status: 400 });
+            return NextResponse.json({ error: 'At least one advisor required' }, { status: 400, headers: corsHeaders });
         }
 
         if (!items || !Array.isArray(items) || items.length === 0) {
-            return NextResponse.json({ error: 'At least one item required' }, { status: 400 });
+            return NextResponse.json({ error: 'At least one item required' }, { status: 400, headers: corsHeaders });
         }
 
         // Create a batch job ID
@@ -95,9 +106,9 @@ export async function POST(req: Request) {
             completed: results.length,
             successful: successCount,
             results
-        });
+        }, { headers: corsHeaders });
     } catch (error: any) {
         console.error('Extension ingest error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
     }
 }

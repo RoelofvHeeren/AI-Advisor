@@ -314,5 +314,13 @@ function hideStatus() {
     statusDiv.classList.add('hidden');
 }
 
+// Listen for storage changes (background script updates queue)
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.queue) {
+        queue = changes.queue.newValue || [];
+        updateQueueUI();
+    }
+});
+
 // Initialize on load
 init();
