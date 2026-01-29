@@ -14,7 +14,8 @@ import {
     LayoutDashboard,
     Plus,
     Flame,
-    History
+    History,
+    Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -75,6 +76,24 @@ export function Sidebar() {
         const session = await res.json();
         if (session.id) {
             router.push(`/?sessionId=${session.id}`);
+            fetchSessions();
+        }
+    };
+
+    const handleDeleteSession = async (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!confirm('Are you sure you want to delete this conversation?')) return;
+
+        const res = await fetch(`/api/chat/sessions?id=${id}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            if (currentSessionId === id) {
+                router.push('/');
+            }
             fetchSessions();
         }
     };
@@ -173,18 +192,25 @@ export function Sidebar() {
                         </div>
                         <div className="space-y-1">
                             {masterminds.map((session) => (
-                                <Link
-                                    key={session.id}
-                                    href={`/?sessionId=${session.id}`}
-                                    className={cn(
-                                        "block px-4 py-2 text-xs rounded-lg transition-all truncate",
-                                        currentSessionId === session.id
-                                            ? "bg-[#139187]/10 text-[#139187] border border-[#139187]/20"
-                                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                                    )}
-                                >
-                                    {session.title}
-                                </Link>
+                                <div key={session.id} className="group/item relative">
+                                    <Link
+                                        href={`/?sessionId=${session.id}`}
+                                        className={cn(
+                                            "block px-4 py-2 pr-10 text-xs rounded-lg transition-all truncate",
+                                            currentSessionId === session.id
+                                                ? "bg-[#139187]/10 text-[#139187] border border-[#139187]/20"
+                                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        {session.title}
+                                    </Link>
+                                    <button
+                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:text-red-400 transition-all text-gray-500"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -201,18 +227,25 @@ export function Sidebar() {
                         </div>
                         <div className="space-y-1">
                             {recentChats.map((session) => (
-                                <Link
-                                    key={session.id}
-                                    href={`/?sessionId=${session.id}`}
-                                    className={cn(
-                                        "block px-4 py-2 text-xs rounded-lg transition-all truncate",
-                                        currentSessionId === session.id
-                                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                                            : "text-gray-500 hover:text-white hover:bg-white/5"
-                                    )}
-                                >
-                                    {session.title}
-                                </Link>
+                                <div key={session.id} className="group/item relative">
+                                    <Link
+                                        href={`/?sessionId=${session.id}`}
+                                        className={cn(
+                                            "block px-4 py-2 pr-10 text-xs rounded-lg transition-all truncate",
+                                            currentSessionId === session.id
+                                                ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                                                : "text-gray-500 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        {session.title}
+                                    </Link>
+                                    <button
+                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:text-red-400 transition-all text-gray-500"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
