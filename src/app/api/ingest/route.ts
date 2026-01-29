@@ -36,12 +36,26 @@ export async function POST(req: Request) {
             const url = formData.get('url') as string;
             if (!url) throw new Error('Missing YouTube URL');
 
+            console.log(`Starting YouTube transcript fetch for: ${url}`);
             const { YoutubeTranscript } = await import('youtube-transcript');
-            const transcript = await YoutubeTranscript.fetchTranscript(url);
-            textContent = transcript.map(t => t.text).join(' ');
+
+            try {
+                const transcript = await YoutubeTranscript.fetchTranscript(url, {
+                    lang: 'en'
+                });
+                textContent = transcript.map(t => t.text).join(' ');
+            } catch (ytError: any) {
+                console.warn('English transcript failed, trying default...', ytError.message);
+                try {
+                    const transcript = await YoutubeTranscript.fetchTranscript(url);
+                    textContent = transcript.map(t => t.text).join(' ');
+                } catch (innerError: any) {
+                    console.error('Final YouTube fetch failure:', innerError.message);
+                    throw new Error(`YouTube Transcript Error: ${innerError.message}. Make sure the video has captions enabled.`);
+                }
+            }
 
             if (!title || title === 'General Knowledge') {
-                // We'll just use the URL as title or a generic one since getting YT title needs API
                 (formData as any).set('title', `YouTube Transcript: ${url}`);
             }
         } else {

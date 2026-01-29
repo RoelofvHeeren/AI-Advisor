@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Users, Search, MoreVertical, Trash2, Edit3, BookOpen } from 'lucide-react';
+import { Plus, Users, Search, Trash2, Edit3, BookOpen } from 'lucide-react';
+// Version: 1.1.0 - Added Delete button and Initials fallback
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -30,13 +31,14 @@ export default function AdvisorsPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newName) return;
+        if (!newName || isLoading) return;
 
+        setIsLoading(true);
         const { error } = await supabase.from('advisors').insert({
             name: newName,
             description: newDesc,
             system_prompt: newPrompt,
-            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newName}`
+            avatar_url: null // Set to null to use initials
         });
 
         if (!error) {
@@ -45,7 +47,30 @@ export default function AdvisorsPage() {
             setNewDesc('');
             setNewPrompt('');
             fetchAdvisors();
+        } else {
+            console.error('Create error:', error);
+            setIsLoading(false);
         }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this advisor? This will also remove all their knowledge documents.')) return;
+
+        const { error } = await supabase.from('advisors').delete().eq('id', id);
+        if (!error) {
+            fetchAdvisors();
+        } else {
+            alert('Error deleting advisor: ' + error.message);
+        }
+    };
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
     };
 
     return (
@@ -86,16 +111,26 @@ export default function AdvisorsPage() {
                             className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 shadow-luxury"
                         >
                             <div className="flex items-start justify-between mb-6">
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 ring-2 ring-[#139187]/20">
-                                    <img
-                                        src={advisor.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${advisor.name}`}
-                                        alt={advisor.name}
-                                        className="w-full h-full object-cover"
-                                    />
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 ring-2 ring-[#139187]/20 flex items-center justify-center bg-gradient-to-br from-[#139187]/20 to-black/40">
+                                    {advisor.avatar_url ? (
+                                        <img
+                                            src={advisor.avatar_url}
+                                            alt={advisor.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-xl font-bold text-[#139187] font-mono">
+                                            {getInitials(advisor.name)}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="p-2 hover:bg-white/10 rounded-lg text-gray-400 transition-colors">
-                                        <MoreVertical size={16} />
+                                    <button
+                                        onClick={() => handleDelete(advisor.id)}
+                                        className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                                        title="Delete Advisor"
+                                    >
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -189,9 +224,10 @@ export default function AdvisorsPage() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 py-3 bg-gradient-to-r from-[#139187] to-[#0d6b63] text-white rounded-xl transition-all font-bold shadow-lg shadow-[#139187]/20"
+                                        disabled={isLoading || !newName}
+                                        className="flex-1 py-3 bg-gradient-to-r from-[#139187] to-[#0d6b63] text-white rounded-xl transition-all font-bold shadow-lg shadow-[#139187]/20 disabled:opacity-50"
                                     >
-                                        Create Advisor
+                                        {isLoading ? 'Creating...' : 'Create Advisor'}
                                     </button>
                                 </div>
                             </form>

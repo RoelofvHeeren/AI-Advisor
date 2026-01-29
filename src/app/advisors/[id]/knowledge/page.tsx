@@ -217,6 +217,27 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
         }
     };
 
+    const handleDeleteDocument = async (docId: string) => {
+        if (!confirm('Are you sure you want to delete this document? This will remove all associated AI context.')) return;
+
+        const { error } = await supabase.from('documents').delete().eq('id', docId);
+        if (!error) {
+            setDocuments(prev => prev.filter(d => d.id !== docId));
+        } else {
+            alert('Error deleting document: ' + error.message);
+        }
+    };
+
+    const getInitials = (name: string) => {
+        if (!name) return '??';
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: { 'application/pdf': ['.pdf'] },
@@ -233,8 +254,14 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
 
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 shadow-luxury">
                 <div className="flex items-center gap-4 mb-2">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/10">
-                        <img src={advisor?.avatar_url} alt="" className="w-full h-full object-cover" />
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-gradient-to-br from-[#139187]/20 to-black/40">
+                        {advisor?.avatar_url ? (
+                            <img src={advisor.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-sm font-bold text-[#139187] font-mono">
+                                {getInitials(advisor?.name || '')}
+                            </span>
+                        )}
                     </div>
                     <h1 className="font-serif text-3xl font-bold text-white">
                         {advisor?.name}<span className="text-[#139187]/60">.brain</span>
@@ -416,7 +443,10 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${doc.content_type === 'pdf' ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
                                             {doc.content_type}
                                         </span>
-                                        <button className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all">
+                                        <button
+                                            onClick={() => handleDeleteDocument(doc.id)}
+                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all"
+                                        >
                                             <Trash2 size={14} />
                                         </button>
                                     </div>

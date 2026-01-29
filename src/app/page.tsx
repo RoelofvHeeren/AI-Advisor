@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -25,6 +26,10 @@ interface Message {
 }
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sessionId = searchParams.get('sessionId');
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -32,23 +37,74 @@ export default function Home() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 1. Fetch all advisors
   useEffect(() => {
     const fetchAdvisors = async () => {
       const { data } = await supabase.from('advisors').select('*');
       if (data) {
         setAllAdvisors(data);
-        // Default select the first one (e.g. Alex)
-        if (data.length > 0) setSelectedIds([data[0].id]);
       }
     };
     fetchAdvisors();
   }, []);
 
+  // 2. Handle Session Loading
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!sessionId) {
+        setMessages([]);
+        // Default select first advisor if none selected and not in a session
+        if (allAdvisors.length > 0 && selectedIds.length === 0) {
+          setSelectedIds([allAdvisors[0].id]);
+        }
+        return;
+      }
+
+      // Fetch session advisors
+      const { data: sessionAdvisors } = await supabase
+        .from('chat_session_advisors')
+        .select('advisor_id')
+        .eq('session_id', sessionId);
+
+      if (sessionAdvisors) {
+        setSelectedIds(sessionAdvisors.map(sa => sa.advisor_id));
+      }
+
+      // Fetch messages
+      const { data: pastMessages } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (pastMessages) {
+        setMessages(pastMessages.map(m => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content
+        })));
+      }
+    };
+
+    loadSession();
+  }, [sessionId, allAdvisors.length]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const getInitials = (name: string) => {
+    if (!name) return '??';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const toggleAdvisor = (id: string) => {
+    // If we are in a session, maybe we shouldn't allow changing advisors?
+    // For now, let's allow it but it won't update the session link unless we add logic.
     setSelectedIds(prev =>
       prev.includes(id)
         ? prev.filter(i => i !== id)
@@ -59,6 +115,27 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || selectedIds.length === 0) return;
+
+    let currentSessionId = sessionId;
+
+    // 3. Create Session if it doesn't exist
+    if (!currentSessionId) {
+      const res = await fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: input.trim().slice(0, 30) + '...',
+          advisorIds: selectedIds,
+          isMastermind: selectedIds.length > 1
+        })
+      });
+      const session = await res.json();
+      if (session.id) {
+        currentSessionId = session.id;
+        // Update URL without full reload if possible, or just push
+        router.push(`/?sessionId=${session.id}`, { scroll: false });
+      }
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -71,7 +148,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          advisorIds: selectedIds
+          advisorIds: selectedIds,
+          sessionId: currentSessionId
         }),
       });
 
@@ -119,8 +197,14 @@ export default function Home() {
                       : "bg-white/5 border-white/10 text-gray-400 opacity-60 hover:opacity-100"
                   )}
                 >
-                  <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10">
-                    <img src={adv.avatar_url} alt="" className="w-full h-full object-cover" />
+                  <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center bg-gradient-to-br from-[#139187]/20 to-black/40">
+                    {adv.avatar_url ? (
+                      <img src={adv.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] font-bold text-[#139187] font-mono">
+                        {getInitials(adv.name)}
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs font-bold">{adv.name}</span>
                   {isSelected && <Check size={12} className="text-[#139187]" />}
