@@ -1,42 +1,43 @@
-/* YouTube Multi-Select Overlay Styles */
-.ai-advisor-select-overlay {
+/* YouTube Selection Mode */
+.ai-advisor-video-selected {
+    outline: 4px solid #139187 !important;
+    outline-offset: -4px;
+    background: rgba(19, 145, 135, 0.1) !important;
+    position: relative;
+}
+
+.ai-advisor-video-selected::after {
+    content: "✓ SELECTED";
     position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #139187;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 12px;
+    z-index: 10000;
+}
+
+/* Global Selection Mode Banner */
+#ai-advisor-mode-banner {
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 9999;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
+    background: #139187;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    z-index: 2147483647;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
     justify-content: center;
-}
-
-.ai-advisor-select-overlay:hover {
-    background: rgba(19, 145, 135, 0.9);
-}
-
-.ai-advisor-select-overlay.selected {
-    background: rgba(19, 145, 135, 0.6);
-    border: 4px solid #139187;
-    box-shadow: 0 0 20px rgba(19, 145, 135, 0.4);
-}
-
-.ai-advisor-checkbox {
-    width: 40px;
-    height: 40px;
-    cursor: pointer;
-    accent-color: #139187;
-    transition: transform 0.2s;
-}
-
-.ai-advisor-select-overlay:hover .ai-advisor-checkbox {
-    transform: scale(1.2);
+    align-items: center;
+    gap: 20px;
 }
 
 /* Floating Action Button */
