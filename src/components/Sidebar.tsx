@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-// Version: 1.1.0 - Added Masterminds and History sections
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -10,7 +9,6 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    Zap,
     LayoutDashboard,
     Plus,
     Flame,
@@ -21,8 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 
-export function Sidebar() {
-    const [isCollapsed, setIsCollapsed] = useState(false);
+function SidebarContent({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean, setIsCollapsed: (v: boolean) => void }) {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -105,11 +102,7 @@ export function Sidebar() {
     ];
 
     return (
-        <motion.aside
-            initial={false}
-            animate={{ width: isCollapsed ? 80 : 280 }}
-            className="sticky top-0 h-screen shrink-0 flex flex-col glass border-r border-white/10 z-50 transition-all duration-500 overflow-hidden"
-        >
+        <>
             {/* Logo Section */}
             <div className="p-6 mb-4 flex items-center justify-between">
                 <AnimatePresence mode="wait">
@@ -267,6 +260,31 @@ export function Sidebar() {
                     )}
                 </div>
             </div>
+        </>
+    );
+}
+
+export function Sidebar() {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+
+    return (
+        <motion.aside
+            initial={false}
+            animate={{ width: isCollapsed ? 80 : 280 }}
+            className="sticky top-0 h-screen shrink-0 flex flex-col glass border-r border-white/10 z-50 transition-all duration-500 overflow-hidden"
+        >
+            <Suspense fallback={
+                <div className="flex flex-col h-full p-6 space-y-8 animate-pulse">
+                    <div className="w-12 h-12 bg-white/5 rounded-xl" />
+                    <div className="flex-1 space-y-4">
+                        <div className="h-10 bg-white/5 rounded-xl" />
+                        <div className="h-10 bg-white/5 rounded-xl" />
+                        <div className="h-10 bg-white/5 rounded-xl" />
+                    </div>
+                </div>
+            }>
+                <SidebarContent isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+            </Suspense>
         </motion.aside>
     );
 }

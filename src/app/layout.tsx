@@ -29,9 +29,7 @@ export default function RootLayout({
         <div className="video-overlay" />
 
         {/* Navigation */}
-        <Suspense fallback={<div className="w-20 lg:w-[280px] bg-black/20 animate-pulse" />}>
-          <Sidebar />
-        </Suspense>
+        <Sidebar />
 
         {/* Content */}
         <main className="flex-1 relative z-10 flex flex-col p-6 lg:p-8 overflow-y-auto">
