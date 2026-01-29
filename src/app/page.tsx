@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import {
   Send,
-  Bot,
   User,
   Zap,
   Plus,
   Check,
   Users,
-  MessageSquare,
   Sparkles
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
@@ -25,7 +23,7 @@ interface Message {
   content: string;
 }
 
-export default function Home() {
+function ChatInterface() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get('sessionId');
@@ -103,8 +101,6 @@ export default function Home() {
   };
 
   const toggleAdvisor = (id: string) => {
-    // If we are in a session, maybe we shouldn't allow changing advisors?
-    // For now, let's allow it but it won't update the session link unless we add logic.
     setSelectedIds(prev =>
       prev.includes(id)
         ? prev.filter(i => i !== id)
@@ -118,7 +114,6 @@ export default function Home() {
 
     let currentSessionId = sessionId;
 
-    // 3. Create Session if it doesn't exist
     if (!currentSessionId) {
       const res = await fetch('/api/chat/sessions', {
         method: 'POST',
@@ -132,7 +127,6 @@ export default function Home() {
       const session = await res.json();
       if (session.id) {
         currentSessionId = session.id;
-        // Update URL without full reload if possible, or just push
         router.push(`/?sessionId=${session.id}`, { scroll: false });
       }
     }
@@ -237,16 +231,6 @@ export default function Home() {
               <p className="max-w-md text-gray-500 text-sm leading-relaxed mb-8">
                 Select your advisors above and start a discussion. Our AI will draw directly from their unique knowledge bases.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-xl">
-                <button onClick={() => setInput("What's the first step to scaling a service business?")} className="glass p-4 rounded-2xl text-left hover:bg-white/10 transition-all border-white/5">
-                  <p className="text-xs font-bold text-[#139187] mb-1 font-mono uppercase">Growth</p>
-                  <p className="text-sm text-gray-300 font-medium">Scaling focus...</p>
-                </button>
-                <button onClick={() => setInput("How do I structure an offer that works every time?")} className="glass p-4 rounded-2xl text-left hover:bg-white/10 transition-all border-white/5">
-                  <p className="text-xs font-bold text-amber-500 mb-1 font-mono uppercase">Sales</p>
-                  <p className="text-sm text-gray-300 font-medium">Grand Slam offers...</p>
-                </button>
-              </div>
             </motion.div>
           )}
 
@@ -347,5 +331,17 @@ function LoaderIcon({ className }: { className?: string }) {
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="w-10 h-10 border-4 border-[#139187] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ChatInterface />
+    </Suspense>
   );
 }
