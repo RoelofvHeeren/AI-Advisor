@@ -29,7 +29,8 @@ function toggleVideoSelection(videoCard) {
     if (!link) return;
 
     const url = new URL(link.href, window.location.origin).href;
-    const title = videoCard.querySelector('#video-title')?.textContent?.trim() || 'YouTube Video';
+    const titleElement = videoCard.querySelector('#video-title, #video-title-link, yt-formatted-string.ytd-video-renderer');
+    const title = titleElement?.textContent?.trim() || 'YouTube Video';
 
     if (selectedVideos.has(url)) {
         selectedVideos.delete(url);
