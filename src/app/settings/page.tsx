@@ -32,11 +32,29 @@ export default function SettingsPage() {
         setLoading(true);
 
         try {
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
+            // Get current user or sign in anonymously
+            let { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
-                alert('You must be logged in to generate API keys');
+                // Try to restore session first
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    user = session.user;
+                } else {
+                    // Auto-sign in anonymously since this is a personal app
+                    const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously();
+                    if (anonError) {
+                        console.error('Anonymous auth failed:', anonError);
+                        alert('Could not authenticate. Please check console for details.');
+                        setLoading(false);
+                        return;
+                    }
+                    user = anonData.user;
+                }
+            }
+
+            if (!user) {
+                alert('Authentication failed: No user found.');
                 setLoading(false);
                 return;
             }
