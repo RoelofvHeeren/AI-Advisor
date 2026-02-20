@@ -27,8 +27,12 @@ export async function GET(req: Request) {
             .eq('key', apiKey)
             .single();
 
-        if (keyError || !keyData || !keyData.is_active) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401, headers: corsHeaders });
+        if (keyError) {
+            return NextResponse.json({ error: 'Invalid API key', details: keyError.message }, { status: 401, headers: corsHeaders });
+        }
+
+        if (!keyData || !keyData.is_active) {
+            return NextResponse.json({ error: 'Invalid API key or inactive' }, { status: 401, headers: corsHeaders });
         }
 
         // Get user's advisors
