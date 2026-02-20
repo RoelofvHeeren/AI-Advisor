@@ -33,7 +33,15 @@ export async function GET(req: Request) {
             results.tests.supabase = `Exception: ${e.message}`;
         }
 
-        // Test 2: YouTube Connectivity (Connectivity only, no transcript)
+        // Test 2: API Keys table check
+        try {
+            const { data: keys, error: keysError } = await supabase.from('api_keys').select('*').limit(1);
+            results.tests.api_keys_table = keysError ? `Missing Table or RLS: ${keysError.message} (${keysError.code})` : 'Exists';
+        } catch (e: any) {
+            results.tests.api_keys_table = `Query Exception: ${e.message}`;
+        }
+
+        // Test 3: YouTube Connectivity (Connectivity only, no transcript)
         try {
             const testUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
             const res = await fetch(testUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
