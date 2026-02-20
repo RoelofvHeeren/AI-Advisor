@@ -4,21 +4,9 @@ from youtube_transcript_api import YouTubeTranscriptApi
 
 def get_transcript(video_id):
     try:
-        # Try English manual/auto
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
         
-        try:
-            # Try manual English first
-            transcript = transcript_list.find_transcript(['en'])
-        except:
-            # Fallback to any English (like auto-generated)
-            try:
-                transcript = transcript_list.find_generated_transcript(['en'])
-            except:
-                # Fallback to the first available transcript
-                transcript = next(iter(transcript_list))
-        
-        full_transcript = " ".join([t['text'] for t in transcript.fetch()])
+        full_transcript = " ".join([t['text'] for t in transcript_data])
         return {"success": True, "transcript": full_transcript}
     except Exception as e:
         return {"success": False, "error": str(e)}
