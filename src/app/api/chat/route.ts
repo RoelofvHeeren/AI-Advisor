@@ -34,10 +34,8 @@ export async function POST(req: Request) {
         });
         let queryEmbedding = embeddingResult.embedding.values;
 
-        // Pad embedding from 768 to 1536 to match the database vector scale
-        if (queryEmbedding.length === 768) {
-            queryEmbedding = [...queryEmbedding, ...new Array(768).fill(0)];
-        }
+        // Slice embedding from 3072 to 1536 to match the database vector scale
+        queryEmbedding = queryEmbedding.slice(0, 1536);
 
         // 3. Fetch all Advisors info
         const { data: advisors } = await supabase

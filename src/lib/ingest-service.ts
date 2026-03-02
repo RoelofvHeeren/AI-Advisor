@@ -125,10 +125,8 @@ export async function ingestContent(params: IngestParams) {
             });
             let embedding = result.embedding.values;
 
-            // Pad embedding from 768 to 1536 to match the database vector scale
-            if (embedding.length === 768) {
-                embedding = [...embedding, ...new Array(768).fill(0)];
-            }
+            // Slice embedding from 3072 to 1536 dimensions to match the Supabase schema
+            embedding = embedding.slice(0, 1536);
 
             const { error: chunkError } = await supabase.from('document_chunks').insert({
                 document_id: docId,
