@@ -13,7 +13,8 @@ import {
     AlertCircle,
     Sparkles,
     Search,
-    Youtube
+    Youtube,
+    X
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,10 +35,19 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<string | null>(null);
 
+    // Modal state
+    const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<any>(null);
+    const [isFetchingDoc, setIsFetchingDoc] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             const { data: adv } = await supabase.from('advisors').select('*').eq('id', advisorId).single();
-            const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+            const { data: docs } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('advisor_id', advisorId)
+                .order('created_at', { ascending: false });
             setAdvisor(adv);
             setDocuments(docs || []);
         };
@@ -67,7 +77,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             if (data.success) {
                 setStatus(`Successfully indexed ${data.chunks} chunks!`);
                 // Refresh docs
-                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('advisor_id', advisorId)
+                    .order('created_at', { ascending: false });
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -103,7 +117,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 setTranscript('');
                 setTitle('');
                 // Refresh docs
-                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('advisor_id', advisorId)
+                    .order('created_at', { ascending: false });
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -138,7 +156,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 setStatus(`Successfully indexed ${data.chunks} chunks from web!`);
                 setUrl('');
                 // Refresh docs
-                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('advisor_id', advisorId)
+                    .order('created_at', { ascending: false });
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -171,7 +193,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 setStatus(`Research complete! Found and indexed ${data.results.length} sources.`);
                 setResearchQuery('');
                 // Refresh docs
-                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('advisor_id', advisorId)
+                    .order('created_at', { ascending: false });
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -205,7 +231,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 setStatus(`Successfully indexed YouTube transcript! (${data.chunks} chunks)`);
                 setYoutubeUrl('');
                 // Refresh docs
-                const { data: docs } = await supabase.from('documents').select('*').eq('advisor_id', advisorId);
+                const { data: docs } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('advisor_id', advisorId)
+                    .order('created_at', { ascending: false });
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -225,6 +255,20 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             setDocuments(prev => prev.filter(d => d.id !== docId));
         } else {
             alert('Error deleting document: ' + error.message);
+        }
+    };
+
+    const handleViewDocument = async (docId: string) => {
+        setSelectedDocId(docId);
+        setIsFetchingDoc(true);
+        try {
+            const res = await fetch(`/api/documents/${docId}`);
+            const data = await res.json();
+            setViewingDoc(data);
+        } catch (e) {
+            console.error('Error fetching doc:', e);
+        } finally {
+            setIsFetchingDoc(false);
         }
     };
 
@@ -270,9 +314,9 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 <p className="text-sm text-gray-400">Expand the information this advisor can draw from.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Input */}
-                <div className="lg:col-span-2 space-y-6">
+            <div className="flex flex-col gap-8">
+                {/* Top Section: Input */}
+                <div className="space-y-6">
                     <div className="glass rounded-2xl p-6">
                         <div className="flex gap-4 p-1 bg-black/20 rounded-xl mb-6 overflow-x-auto print:hidden">
                             <button
@@ -429,45 +473,133 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
 
-                {/* Right Column: List */}
+                {/* Bottom Section: List */}
                 <div className="space-y-6">
                     <div className="glass rounded-2xl p-6">
-                        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                            <FileText size={18} className="text-[#139187]" />
-                            Current Knowledge
-                        </h3>
-                        <div className="space-y-3">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-white font-bold flex items-center gap-2">
+                                <FileText size={18} className="text-[#139187]" />
+                                Current Knowledge
+                            </h3>
+                            <span className="text-[10px] font-bold text-[#139187] bg-[#139187]/10 px-2 py-1 rounded-lg">
+                                {documents.length} ITEMS
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {documents.map((doc) => (
-                                <div key={doc.id} className="p-4 bg-black/30 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${doc.content_type === 'pdf' ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
+                                <div
+                                    key={doc.id}
+                                    onClick={() => handleViewDocument(doc.id)}
+                                    className="p-4 bg-black/30 rounded-xl border border-white/5 group hover:border-[#139187]/40 hover:bg-[#139187]/5 transition-all cursor-pointer relative overflow-hidden"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${doc.content_type === 'pdf' ? 'bg-amber-500/20 text-amber-500' : doc.content_type === 'youtube' ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
                                             {doc.content_type}
                                         </span>
                                         <button
-                                            onClick={() => handleDeleteDocument(doc.id)}
-                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteDocument(doc.id);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all"
                                         >
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
-                                    <p className="text-sm font-bold text-white truncate mb-1">{doc.title}</p>
-                                    <p className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                    <p className="text-sm font-bold text-white mb-1 line-clamp-1">{doc.title}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <p className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</p>
+                                        <div className="text-[10px] text-[#139187] font-bold group-hover:translate-x-1 transition-transform">VIEW →</div>
+                                    </div>
                                 </div>
                             ))}
                             {documents.length === 0 && (
-                                <p className="text-center text-sm text-gray-500 py-10">No knowledge indexed yet.</p>
+                                <div className="col-span-full py-12 text-center">
+                                    <AlertCircle className="mx-auto text-gray-600 mb-2" size={32} />
+                                    <p className="text-sm text-gray-500">No knowledge indexed yet.</p>
+                                </div>
                             )}
                         </div>
                     </div>
-
-                    <div className="bg-[#139187]/10 border border-[#139187]/20 rounded-2xl p-6">
-                        <h4 className="text-xs font-bold text-[#139187] uppercase tracking-widest mb-2">PRO TIP</h4>
-                        <p className="text-xs text-gray-400 leading-relaxed">
-                            The quality of the advice depends on the quality of the input. Use clean transcripts and specific books for the best results.
-                        </p>
-                    </div>
                 </div>
             </div>
+
+            {/* View Document Modal */}
+            <AnimatePresence>
+                {selectedDocId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm"
+                        onClick={() => {
+                            setSelectedDocId(null);
+                            setViewingDoc(null);
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-[#0a0a0a] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6 border-bottom border-white/10 flex items-center justify-between bg-white/[0.02]">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2 rounded-xl ${viewingDoc?.type === 'youtube' ? 'bg-red-500/20 text-red-500' : 'bg-[#139187]/20 text-[#139187]'}`}>
+                                        {viewingDoc?.type === 'youtube' ? <Youtube size={20} /> : <FileText size={20} />}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-bold leading-tight">{viewingDoc?.title || 'Loading document...'}</h3>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
+                                            {viewingDoc?.type} • Added {viewingDoc ? new Date(viewingDoc.created_at).toLocaleDateString() : '...'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSelectedDocId(null);
+                                        setViewingDoc(null);
+                                    }}
+                                    className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-all"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 font-sans leading-relaxed text-gray-300">
+                                {isFetchingDoc ? (
+                                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                        <Loader2 className="animate-spin text-[#139187]" size={40} />
+                                        <p className="text-sm text-gray-400 animate-pulse">Retrieving full content from vector brain...</p>
+                                    </div>
+                                ) : viewingDoc ? (
+                                    <div className="prose prose-invert max-w-none">
+                                        <div className="whitespace-pre-wrap text-sm md:text-base selection:bg-[#139187]/30">
+                                            {viewingDoc.content}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-red-400">Error loading document.</p>
+                                )}
+                            </div>
+
+                            <div className="p-4 border-t border-white/5 bg-black/40 flex justify-between items-center">
+                                <p className="text-[10px] text-gray-600 italic">This content is indexed and being used to train your advisor.</p>
+                                <button
+                                    onClick={() => {
+                                        setSelectedDocId(null);
+                                        setViewingDoc(null);
+                                    }}
+                                    className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl transition-all"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

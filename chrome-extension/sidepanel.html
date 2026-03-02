@@ -309,10 +309,80 @@
         <!-- Actions -->
         <button id="saveToAdvisors" disabled>Save to Selected Advisors</button>
 
+        <!-- Progress Section -->
+        <div id="progressContainer" class="hidden"
+            style="margin-top: 20px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+            <label style="margin-bottom: 12px; display: block;">Processing Library...</label>
+            <div id="progressList"></div>
+            <div id="progressSummary"
+                style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; color: #999; text-align: center;">
+            </div>
+        </div>
+
         <!-- Status -->
         <div id="status" class="status hidden"></div>
     </div>
+    <style>
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        }
 
+        .progress-item:last-child {
+            border-bottom: none;
+        }
+
+        .progress-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .progress-icon.loading {
+            border: 2px solid rgba(19, 145, 135, 0.3);
+            border-top-color: #139187;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .progress-icon.success {
+            color: #139187;
+        }
+
+        .progress-icon.error {
+            color: #ff4444;
+        }
+
+        .progress-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .progress-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        .progress-status {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
     <script src="sidepanel.js"></script>
 </body>
 

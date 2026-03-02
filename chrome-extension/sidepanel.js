@@ -22,6 +22,9 @@ const youtubeControls = document.getElementById('youtubeControls');
 const queueSection = document.getElementById('queueSection');
 const queueList = document.getElementById('queueList');
 const queueCount = document.getElementById('queueCount');
+const progressContainer = document.getElementById('progressContainer');
+const progressList = document.getElementById('progressList');
+const progressSummary = document.getElementById('progressSummary');
 
 // Initialize
 async function init() {
@@ -256,10 +259,16 @@ saveToAdvisorsBtn.addEventListener('click', async () => {
 
     const items = queue.length > 0 ? queue : [currentPage];
 
-    try {
-        showStatus('Saving to advisors...', 'loading');
-        saveToAdvisorsBtn.disabled = true;
+    // UI Setup
+    progressContainer.classList.remove('hidden');
+    progressList.innerHTML = '';
+    progressSummary.textContent = 'Starting ingestion...';
+    saveToAdvisorsBtn.disabled = true;
+    hideStatus();
 
+    const progressMap = new Map(); // url+advisorId -> element
+
+    try {
         const response = await fetch(`${platformUrl}/api/extension/ingest`, {
             method: 'POST',
             headers: {
@@ -273,43 +282,107 @@ saveToAdvisorsBtn.addEventListener('click', async () => {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to save');
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save');
         }
 
-        const result = await response.json();
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        const successfulUrls = new Set();
 
-        if (result.successful === result.completed) {
-            showStatus(`✓ Successfully saved all ${result.successful} items!`, 'success');
-        } else {
-            const failedCount = result.completed - result.successful;
-            const errors = result.results
-                .filter(r => !r.success)
-                .map(r => r.error)
-                .slice(0, 3)
-                .join(', ');
-            showStatus(`⚠ Saved ${result.successful} items. ${failedCount} failed: ${errors}`, 'error');
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunks = value.split('\n\n');
+            for (const chunk of chunks) {
+                if (!chunk.trim().startsWith('data: ')) continue;
+
+                try {
+                    const data = JSON.parse(chunk.replace('data: ', ''));
+
+                    if (data.error) {
+                        showStatus(data.error, 'error');
+                        continue;
+                    }
+
+                    const key = `${data.url}-${data.advisorId}`;
+
+                    if (data.type === 'progress') {
+                        let itemEl = progressMap.get(key);
+                        if (!itemEl) {
+                            itemEl = createProgressItem(data.title || data.url, data.status);
+                            progressList.appendChild(itemEl);
+                            progressMap.set(key, itemEl);
+                        }
+                        updateProgressItem(itemEl, 'loading', data.status);
+                        progressSummary.textContent = `Processing ${data.current} of ${data.total}...`;
+                    }
+                    else if (data.type === 'item_success') {
+                        const itemEl = progressMap.get(key);
+                        if (itemEl) {
+                            updateProgressItem(itemEl, 'success', `Complete (${data.chunks} chunks)`);
+                        }
+                        successfulUrls.add(data.url);
+                    }
+                    else if (data.type === 'item_error') {
+                        const itemEl = progressMap.get(key);
+                        if (itemEl) {
+                            updateProgressItem(itemEl, 'error', data.error);
+                        }
+                    }
+                    else if (data.type === 'done') {
+                        progressSummary.textContent = `✓ Processed ${data.total} items. ${data.successful} successful.`;
+
+                        // Clear successful items from queue
+                        if (successfulUrls.size > 0) {
+                            queue = queue.filter(q => !successfulUrls.has(q.url));
+                            await saveQueue();
+                            updateQueueUI();
+                        }
+
+                        // Reset selections
+                        selectedAdvisors.clear();
+                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+                        setTimeout(() => {
+                            progressContainer.classList.add('hidden');
+                            saveToAdvisorsBtn.disabled = false;
+                        }, 5000);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse SSE chunk', e);
+                }
+            }
         }
-
-        // Clear queue ONLY if some items were successful
-        if (result.successful > 0) {
-            queue = [];
-            saveQueue();
-            updateQueueUI();
-        }
-
-        // Reset selections
-        selectedAdvisors.clear();
-        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-
-        setTimeout(() => {
-            hideStatus();
-            saveToAdvisorsBtn.disabled = false;
-        }, 3000);
     } catch (error) {
         showStatus('Error: ' + error.message, 'error');
         saveToAdvisorsBtn.disabled = false;
     }
 });
+
+function createProgressItem(title, status) {
+    const div = document.createElement('div');
+    div.className = 'progress-item';
+    div.innerHTML = `
+        <div class="progress-icon loading"></div>
+        <div class="progress-info">
+            <div class="progress-title">${title}</div>
+            <div class="progress-status">${status}</div>
+        </div>
+    `;
+    return div;
+}
+
+function updateProgressItem(element, type, status) {
+    const icon = element.querySelector('.progress-icon');
+    const statusText = element.querySelector('.progress-status');
+
+    icon.className = `progress-icon ${type}`;
+    if (type === 'success') icon.innerHTML = '✓';
+    if (type === 'error') icon.innerHTML = '✕';
+
+    statusText.textContent = status;
+}
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
