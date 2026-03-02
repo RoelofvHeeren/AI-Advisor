@@ -2,15 +2,24 @@ import sys
 import json
 import os
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.proxies import WebshareProxyConfig
+from youtube_transcript_api.proxies import WebshareProxyConfig, GenericProxyConfig
 
 def get_transcript(video_id):
     try:
         username = os.environ.get("PROXY_USERNAME")
         password = os.environ.get("PROXY_PASSWORD")
+        proxy_url = os.environ.get("PROXY_URL")
+        
         ytt_api = YouTubeTranscriptApi()
         
-        if username and password:
+        if proxy_url:
+            ytt_api = YouTubeTranscriptApi(
+                proxy_config=GenericProxyConfig(
+                    http_url=proxy_url,
+                    https_url=proxy_url,
+                )
+            )
+        elif username and password:
             ytt_api = YouTubeTranscriptApi(
                 proxy_config=WebshareProxyConfig(
                     proxy_username=username,
