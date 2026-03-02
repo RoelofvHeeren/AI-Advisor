@@ -42,7 +42,7 @@ def get_transcript(video_id):
             else:
                 raise proxy_err
         
-        full_transcript = " ".join([t['text'] for t in transcript_data])
+        full_transcript = " ".join([t.text for t in transcript_data])
         return {"success": True, "transcript": full_transcript}
     except Exception as e:
         return {"success": False, "error": str(e)}
