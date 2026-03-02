@@ -26,10 +26,16 @@ export async function POST(req: Request) {
             .from('api_keys')
             .select('user_id, is_active')
             .eq('key', apiKey)
-            .single();
+            .select('user_id, is_active')
+            .eq('key', apiKey)
+            .maybeSingle();
 
-        if (keyError || !keyData || !keyData.is_active) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401, headers: corsHeaders });
+        if (keyError) {
+            return NextResponse.json({ error: 'Invalid API key', details: keyError.message }, { status: 401, headers: corsHeaders });
+        }
+
+        if (!keyData || !keyData.is_active) {
+            return NextResponse.json({ error: 'Invalid API key or inactive' }, { status: 401, headers: corsHeaders });
         }
 
         const { advisorIds, items } = await req.json();
