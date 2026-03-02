@@ -261,12 +261,19 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
     const handleViewDocument = async (docId: string) => {
         setSelectedDocId(docId);
         setIsFetchingDoc(true);
+        setViewingDoc(null); // Clear previous
         try {
             const res = await fetch(`/api/documents/${docId}`);
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Failed to fetch document');
+            }
             const data = await res.json();
             setViewingDoc(data);
-        } catch (e) {
+        } catch (e: any) {
             console.error('Error fetching doc:', e);
+            setStatus(`Error viewing document: ${e.message}`);
+            setSelectedDocId(null); // Close modal on error
         } finally {
             setIsFetchingDoc(false);
         }
@@ -550,9 +557,9 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                                         {viewingDoc?.type === 'youtube' ? <Youtube size={20} /> : <FileText size={20} />}
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold leading-tight">{viewingDoc?.title || 'Loading document...'}</h3>
+                                        <h3 className="text-white font-bold leading-tight">{viewingDoc?.title || 'Loading...'}</h3>
                                         <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
-                                            {viewingDoc?.type} • Added {viewingDoc ? new Date(viewingDoc.created_at).toLocaleDateString() : '...'}
+                                            {viewingDoc?.type} {viewingDoc?.created_at && `• Added ${new Date(viewingDoc.created_at).toLocaleDateString()}`}
                                         </p>
                                     </div>
                                 </div>
