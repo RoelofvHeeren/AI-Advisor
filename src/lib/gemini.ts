@@ -7,5 +7,5 @@ export const geminiModel = genAI.getGenerativeModel({
 });
 
 export const embeddingModel = genAI.getGenerativeModel({
-    model: 'models/gemini-embedding-001'
+    model: 'models/text-embedding-004'
 });

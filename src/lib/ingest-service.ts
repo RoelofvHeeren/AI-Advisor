@@ -122,7 +122,7 @@ export async function ingestContent(params: IngestParams) {
         for (const chunkContent of chunks) {
             const result = await (embeddingModel as any).embedContent({
                 content: { role: 'user', parts: [{ text: chunkContent }] },
-                outputDimensionality: 768
+                outputDimensionality: 1536
             });
             const embedding = result.embedding.values;
 
