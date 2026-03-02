@@ -25,7 +25,7 @@ export async function GET(req: Request) {
             .from('api_keys')
             .select('user_id, is_active')
             .eq('key', apiKey)
-            .single();
+            .maybeSingle();
 
         if (keyError) {
             return NextResponse.json({ error: 'Invalid API key', details: keyError.message }, { status: 401, headers: corsHeaders });
