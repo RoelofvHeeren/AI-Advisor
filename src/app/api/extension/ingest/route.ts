@@ -26,8 +26,6 @@ export async function POST(req: Request) {
             .from('api_keys')
             .select('user_id, is_active')
             .eq('key', apiKey)
-            .select('user_id, is_active')
-            .eq('key', apiKey)
             .maybeSingle();
 
         if (keyError) {
