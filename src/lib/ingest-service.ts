@@ -121,10 +121,14 @@ export async function ingestContent(params: IngestParams) {
     try {
         for (const chunkContent of chunks) {
             const result = await (embeddingModel as any).embedContent({
-                content: { role: 'user', parts: [{ text: chunkContent }] },
-                outputDimensionality: 1536
+                content: { role: 'user', parts: [{ text: chunkContent }] }
             });
-            const embedding = result.embedding.values;
+            let embedding = result.embedding.values;
+
+            // Pad embedding from 768 to 1536 to match the database vector scale
+            if (embedding.length === 768) {
+                embedding = [...embedding, ...new Array(768).fill(0)];
+            }
 
             const { error: chunkError } = await supabase.from('document_chunks').insert({
                 document_id: docId,

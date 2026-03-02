@@ -30,10 +30,14 @@ export async function POST(req: Request) {
 
         // 2. Get embedding for the user's message
         const embeddingResult = await (embeddingModel as any).embedContent({
-            content: { role: 'user', parts: [{ text: message }] },
-            outputDimensionality: 768
+            content: { role: 'user', parts: [{ text: message }] }
         });
-        const queryEmbedding = embeddingResult.embedding.values;
+        let queryEmbedding = embeddingResult.embedding.values;
+
+        // Pad embedding from 768 to 1536 to match the database vector scale
+        if (queryEmbedding.length === 768) {
+            queryEmbedding = [...queryEmbedding, ...new Array(768).fill(0)];
+        }
 
         // 3. Fetch all Advisors info
         const { data: advisors } = await supabase
