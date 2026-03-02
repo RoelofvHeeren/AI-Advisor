@@ -120,9 +120,25 @@ export async function ingestContent(params: IngestParams) {
     // 3. Embedding & Insertion
     try {
         for (const chunkContent of chunks) {
-            const result = await (embeddingModel as any).embedContent({
-                content: { role: 'user', parts: [{ text: chunkContent }] }
-            });
+            let result;
+            let retries = 3;
+            let delay = 1000;
+
+            while (retries > 0) {
+                try {
+                    result = await (embeddingModel as any).embedContent({
+                        content: { role: 'user', parts: [{ text: chunkContent }] }
+                    });
+                    break;
+                } catch (e: any) {
+                    console.warn(`[Ingest] Embedding retry remaining: ${retries - 1}. Error: ${e.message}`);
+                    retries--;
+                    if (retries === 0) throw e;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                }
+            }
+
             let embedding = result.embedding.values;
 
             // Slice embedding from 3072 to 1536 dimensions to match the Supabase schema
@@ -134,6 +150,11 @@ export async function ingestContent(params: IngestParams) {
                 embedding: embedding
             });
             if (chunkError) throw chunkError;
+
+            // Small cooldown between chunks if we have many
+            if (chunks.length > 5) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
         }
     } catch (e: any) {
         throw new Error(`Trace [EMBEDDING_DB]: ${e.message}`);

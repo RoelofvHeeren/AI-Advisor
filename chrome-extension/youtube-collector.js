@@ -143,13 +143,14 @@ function addSelectedToQueue() {
     const items = [];
     selectedVideos.forEach((title, url) => {
         items.push({ type: 'youtube', url, title });
-
-        // Send individually to ensure sidepanel receives them even if it was just opened
-        chrome.runtime.sendMessage({
-            action: 'addToQueue',
-            item: { type: 'youtube', url, title }
-        });
     });
+
+    if (items.length > 0) {
+        chrome.runtime.sendMessage({
+            action: 'addMultipleToQueue',
+            items: items
+        });
+    }
 
     showNotification(`Added ${selectedVideos.size} videos to queue!`);
     disableMultiSelectMode();

@@ -393,6 +393,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             saveQueue();
             updateQueueUI();
         }
+    } else if (message.action === 'addMultipleToQueue') {
+        let addedCount = 0;
+        message.items.forEach(item => {
+            const existing = queue.find(q => q.url === item.url);
+            if (!existing) {
+                queue.push(item);
+                addedCount++;
+            }
+        });
+
+        if (addedCount > 0) {
+            saveQueue();
+            updateQueueUI();
+        }
     }
 });
 
