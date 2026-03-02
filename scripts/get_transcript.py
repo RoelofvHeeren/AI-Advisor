@@ -27,7 +27,9 @@ def get_transcript(video_id):
                 )
             )
             
-        transcript_data = ytt_api.get_transcript(video_id)
+        transcript_list = ytt_api.list(video_id)
+        transcript = transcript_list.find_transcript(['en'])
+        transcript_data = transcript.fetch()
         
         full_transcript = " ".join([t['text'] for t in transcript_data])
         return {"success": True, "transcript": full_transcript}
