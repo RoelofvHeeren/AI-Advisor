@@ -29,7 +29,18 @@ def get_transcript(video_id):
             
         transcript_list = ytt_api.list(video_id)
         transcript = transcript_list.find_transcript(['en'])
-        transcript_data = transcript.fetch()
+        
+        try:
+            transcript_data = transcript.fetch()
+        except Exception as proxy_err:
+            if proxy_url or (username and password):
+                # Fallback to no proxy if proxy fails
+                fallback_api = YouTubeTranscriptApi()
+                fallback_list = fallback_api.list(video_id)
+                fallback_transcript = fallback_list.find_transcript(['en'])
+                transcript_data = fallback_transcript.fetch()
+            else:
+                raise proxy_err
         
         full_transcript = " ".join([t['text'] for t in transcript_data])
         return {"success": True, "transcript": full_transcript}
