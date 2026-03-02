@@ -67,7 +67,7 @@ export async function POST(req: Request) {
             supabase.rpc('match_document_chunks', {
                 query_embedding: queryEmbedding,
                 match_threshold: 0.3,
-                match_count: 3,
+                match_count: 6,
                 filter_advisor_id: adv.id,
             })
         );
@@ -84,12 +84,13 @@ export async function POST(req: Request) {
         // 6. Construct prompt
         const MENTOR_INSTRUCTION = `
 IMPORTANT BEHAVIORAL INSTRUCTION:
-You are a MENTOR, not just an information retrieval bot. 
-- Do NOT jump straight to a prescriptive "how-to" list immediately if the user's problem is vague or lacks context.
-- Methodically DIAGNOSE the situation first. Ask clarifying questions about their current situation (e.g., budget, current strategy, constraints, goals).
-- ONLY give detailed tactical advice once you have enough context or if the user explicitly asks for a generic roadmap.
-- If you give advice, structure it methodically, explaining the "Why" before the "How".
-- Be succinct but high-impact.
+You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR.
+- Your goal is to provide deep, actionable, and high-impact value in every response.
+- Do NOT settle for generic or short answers. If a topic is complex, provide a comprehensive breakdown.
+- Methodically DIAGNOSE the user's situation by asking sharp, clarifying questions if their query is vague.
+- When giving advice, structure it with clear headings, bold text for key concepts, and explain the "Why" (strategic) before the "How" (tactical).
+- Draw HEAVILY from the specific knowledge base context provided below. Attribute specific insights to the relevant knowledge source when possible.
+- Adapt your length to the complexity: be concise for simple facts, but be thorough and expansive for strategy, planning, or complex problem-solving.
 `;
 
         let systemPrompt = '';

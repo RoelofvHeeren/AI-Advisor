@@ -216,7 +216,7 @@ function ChatInterface() {
       </section>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-8 pr-2 custom-scrollbar min-h-[400px]">
+      <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar min-h-[400px]">
         <AnimatePresence>
           {messages.length === 0 && (
             <motion.div
@@ -245,7 +245,7 @@ function ChatInterface() {
               )}
             >
               <div className={cn(
-                "flex gap-4 max-w-[85%]",
+                "flex gap-3 max-w-[92%]",
                 m.role === 'user' ? "flex-row-reverse" : ""
               )}>
                 <div className={cn(
@@ -255,7 +255,7 @@ function ChatInterface() {
                   {m.role === 'user' ? <User size={20} className="text-[#139187]" /> : <Zap size={20} className="text-[#139187]" />}
                 </div>
                 <div className={cn(
-                  "p-5 rounded-3xl leading-relaxed whitespace-pre-wrap text-sm",
+                  "px-5 py-3.5 rounded-2xl leading-relaxed whitespace-pre-wrap text-sm",
                   m.role === 'user'
                     ? "bg-[#139187]/10 border border-[#139187]/20 text-white"
                     : "glass border-white/5 text-gray-200"
@@ -284,7 +284,7 @@ function ChatInterface() {
                 <div className="w-10 h-10 rounded-xl glass flex items-center justify-center">
                   <LoaderIcon className="animate-spin text-[#139187]" />
                 </div>
-                <div className="p-5 rounded-3xl glass border-white/5 text-gray-500 italic text-sm">
+                <div className="px-5 py-3.5 rounded-2xl glass border-white/5 text-gray-500 italic text-sm">
                   Consulting your advisors...
                 </div>
               </div>
