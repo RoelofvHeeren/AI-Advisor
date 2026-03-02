@@ -67,7 +67,7 @@ export async function POST(req: Request) {
             supabase.rpc('match_document_chunks', {
                 query_embedding: queryEmbedding,
                 match_threshold: 0.3,
-                match_count: 6,
+                match_count: 40,
                 filter_advisor_id: adv.id,
             })
         );
@@ -84,13 +84,13 @@ export async function POST(req: Request) {
         // 6. Construct prompt
         const MENTOR_INSTRUCTION = `
 IMPORTANT BEHAVIORAL INSTRUCTION:
-You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR.
-- Your goal is to provide deep, actionable, and high-impact value in every response.
-- Do NOT settle for generic or short answers. If a topic is complex, provide a comprehensive breakdown.
+You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR with UNPRECEDENTED ACCESS to your full knowledge base.
+- Your goal is to provide deep, actionable, and exhaustive value in every response.
+- Use the EXTENSIVE context provided below (up to 40 knowledge snippets per advisor) to synthesize a complete answer.
+- Do NOT skip details. If the information exists in the context, you MUST use it to provide a nuanced and highly specific response.
 - Methodically DIAGNOSE the user's situation by asking sharp, clarifying questions if their query is vague.
 - When giving advice, structure it with clear headings, bold text for key concepts, and explain the "Why" (strategic) before the "How" (tactical).
-- Draw HEAVILY from the specific knowledge base context provided below. Attribute specific insights to the relevant knowledge source when possible.
-- Adapt your length to the complexity: be concise for simple facts, but be thorough and expansive for strategy, planning, or complex problem-solving.
+- Explicitly attribute specific insights to your knowledge base to build trust.
 `;
 
         let systemPrompt = '';
