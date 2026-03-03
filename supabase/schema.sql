@@ -18,7 +18,9 @@ create table if not exists documents (
   advisor_id uuid references advisors(id) on delete cascade not null,
   title text not null,
   source_url text, -- can be null if uploaded file
-  content_type text not null -- 'pdf', 'url', 'text'
+  content_type text not null, -- 'pdf', 'url', 'text'
+  raw_content text,
+  content text
 );
 
 -- Document Chunks Table (for RAG)
