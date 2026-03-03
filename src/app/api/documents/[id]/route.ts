@@ -22,9 +22,9 @@ export async function GET(
         // Fetch all chunks for this document
         const { data: chunks, error: chunksError } = await supabase
             .from('document_chunks')
-            .select('content, index')
+            .select('content')
             .eq('document_id', documentId)
-            .order('index', { ascending: true });
+            .order('id', { ascending: true });
 
         if (chunksError) {
             throw chunksError;
