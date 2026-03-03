@@ -19,6 +19,8 @@ import {
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: advisorId } = use(params);
@@ -581,9 +583,11 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                                         <p className="text-sm text-gray-400 animate-pulse">Retrieving full content from vector brain...</p>
                                     </div>
                                 ) : viewingDoc ? (
-                                    <div className="prose prose-invert max-w-none">
-                                        <div className="whitespace-pre-wrap text-sm md:text-base selection:bg-[#139187]/30">
-                                            {viewingDoc.content}
+                                    <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-strong:text-[#139187] prose-li:text-gray-300">
+                                        <div className="text-sm md:text-base selection:bg-[#139187]/30">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {viewingDoc.content}
+                                            </ReactMarkdown>
                                         </div>
                                     </div>
                                 ) : (

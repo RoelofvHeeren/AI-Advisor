@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase-server';
 import { getYouTubeTranscript } from '@/lib/youtube';
-import { embeddingModel } from '@/lib/gemini';
+import { geminiModel, embeddingModel } from '@/lib/gemini';
 import * as cheerio from 'cheerio';
 
 export interface IngestParams {
@@ -85,39 +85,87 @@ export async function ingestContent(params: IngestParams) {
     // Sanitize
     textContent = textContent.replace(/\0/g, '');
 
-    // 1. Create Document Entry
+    // 1. Synthesize Content (Million Dollar Optimization)
+    let optimizedContent = textContent;
+    try {
+        console.log('[Ingest] Synthesizing content for superior findability...');
+        const synthesisPrompt = `
+            You are a world-class Knowledge Synthesis Engine. 
+            Transform the following raw transcript into a beautifully structured Markdown document.
+            
+            CRITICAL RULES:
+            1. NEVER DELETE OR SUMMARIZE AWAY ANY INFORMATION. Every fact, quote, and detail must be preserved.
+            2. ADD structure: Use hierarchical headers (#, ##, ###), bullet points, and bolded key terms.
+            3. TAGGING: At the bottom, add a "Key Entities & Topics" section with extracted tags.
+            4. FORMATTING: Use tables for comparisons and clean lists for steps.
+            5. OBJECTIVE: Make this document extremely "findable" for an AI and perfectly readable for a human.
+            
+            Raw Transcript Content:
+            ${textContent.substring(0, 30000)} ... (content continues)
+        `;
+
+        const result = await geminiModel.generateContent(synthesisPrompt);
+        const response = await result.response;
+        optimizedContent = response.text();
+        console.log('[Ingest] Synthesis successful.');
+    } catch (e: any) {
+        console.warn('[Ingest] Synthesis failed, falling back to raw text:', e.message);
+        optimizedContent = textContent;
+    }
+
+    // 2. Create Document Entry
     let docId: string;
     try {
+        // We try to insert into our new columns if they exist. 
+        // Supabase will error if we insert columns that don't exist yet.
+        // So we'll try the "new way" first, fallback to "old way" if it fails.
+        let insertData: any = {
+            advisor_id: advisorId,
+            title: finalTitle,
+            content_type: type
+        };
+
         const { data: doc, error: docError } = await supabase
             .from('documents')
-            .insert({
-                advisor_id: advisorId,
-                title: finalTitle,
-                content_type: type
-            })
+            .insert(insertData)
             .select()
             .single();
 
-        if (docError) throw docError;
+        if (docError) {
+            console.error('Initial insert failed, trying to update later:', docError.message);
+            throw docError;
+        }
+
         docId = doc.id;
+
+        // Try to update with content/raw_content (this might fail if columns missing, but won't block the ingestion)
+        try {
+            await supabase.from('documents').update({
+                content: optimizedContent,
+                raw_content: textContent
+            }).eq('id', docId);
+        } catch (e) {
+            console.warn('[Ingest] Advanced columns update failed (this is expected if you haven\'t run the SQL yet)');
+        }
+
     } catch (e: any) {
         throw new Error(`Trace [DB_DOC_CREATE]: ${e.message}`);
     }
 
-    // 2. Chunking
+    // 3. Chunking (Perform on the Optimized content for better AI retrieval)
     const chunks: string[] = [];
     try {
         const chunkSize = 1000;
         const overlap = 200;
 
-        for (let i = 0; i < textContent.length; i += (chunkSize - overlap)) {
-            chunks.push(textContent.slice(i, i + chunkSize));
+        for (let i = 0; i < optimizedContent.length; i += (chunkSize - overlap)) {
+            chunks.push(optimizedContent.slice(i, i + chunkSize));
         }
     } catch (e: any) {
         throw new Error(`Trace [CHUNKING]: ${e.message}`);
     }
 
-    // 3. Embedding & Insertion
+    // 4. Embedding & Insertion
     try {
         for (const chunkContent of chunks) {
             let result;

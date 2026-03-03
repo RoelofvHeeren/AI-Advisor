@@ -19,7 +19,17 @@ export async function GET(
             return NextResponse.json({ error: 'Document not found' }, { status: 404 });
         }
 
-        // Fetch all chunks for this document
+        if (document.content) {
+            return NextResponse.json({
+                title: document.title,
+                type: document.content_type,
+                created_at: document.created_at,
+                content: document.content,
+                raw_content: document.raw_content
+            });
+        }
+
+        // Fetch all chunks for this document (Fallback/Legacy)
         const { data: chunks, error: chunksError } = await supabase
             .from('document_chunks')
             .select('content')
