@@ -30,8 +30,29 @@ export async function GET(
             throw chunksError;
         }
 
-        // Combine chunks
-        const fullContent = chunks.map(c => c.content).join('');
+        // Combine chunks with de-overlapping logic
+        function mergeChunks(chunks: string[]): string {
+            if (chunks.length === 0) return '';
+            let result = chunks[0];
+            for (let i = 1; i < chunks.length; i++) {
+                const current = chunks[i];
+                // Find overlap (check the last 1000 chars of result vs current)
+                const s1 = result.slice(-1000);
+                const maxOverlap = Math.min(s1.length, current.length);
+                let overlap = 0;
+
+                for (let j = maxOverlap; j > 0; j--) {
+                    if (s1.endsWith(current.slice(0, j))) {
+                        overlap = j;
+                        break;
+                    }
+                }
+                result += current.slice(overlap);
+            }
+            return result;
+        }
+
+        const fullContent = mergeChunks(chunks.map(c => c.content));
 
         return NextResponse.json({
             title: document.title,
