@@ -89,6 +89,9 @@ export async function ingestContent(params: IngestParams) {
     let optimizedContent = textContent;
     try {
         console.log('[Ingest] Synthesizing content for superior findability...');
+        // For very long transcripts, we might need a sliding window synthesis or just a powerful model.
+        // We'll increase the snippet size but keep a buffer. 
+        // 100k chars is usually enough for most YouTube videos.
         const synthesisPrompt = `
             You are a world-class Knowledge Synthesis Engine. 
             Transform the following raw transcript into a beautifully structured Markdown document.
@@ -101,12 +104,18 @@ export async function ingestContent(params: IngestParams) {
             5. OBJECTIVE: Make this document extremely "findable" for an AI and perfectly readable for a human.
             
             Raw Transcript Content:
-            ${textContent.substring(0, 30000)} ... (content continues)
+            ${textContent.substring(0, 100000)} ${textContent.length > 100000 ? '... [Content Truncated for Synthesis Only]' : ''}
         `;
 
         const result = await geminiModel.generateContent(synthesisPrompt);
         const response = await result.response;
         optimizedContent = response.text();
+
+        // If we truncated the synthesis input, append a note for the human.
+        if (textContent.length > 100000) {
+            optimizedContent += '\n\n> [!NOTE]\n> This optimized view is based on the first 100k characters. Use "Deep Search" to query the full verbatim transcript.';
+        }
+
         console.log('[Ingest] Synthesis successful.');
     } catch (e: any) {
         console.warn('[Ingest] Synthesis failed, falling back to raw text:', e.message);
@@ -138,28 +147,29 @@ export async function ingestContent(params: IngestParams) {
 
         docId = doc.id;
 
-        // Try to update with content/raw_content (this might fail if columns missing, but won't block the ingestion)
+        // Store both formatted and raw content
         try {
             await supabase.from('documents').update({
                 content: optimizedContent,
                 raw_content: textContent
             }).eq('id', docId);
         } catch (e) {
-            console.warn('[Ingest] Advanced columns update failed (this is expected if you haven\'t run the SQL yet)');
+            console.warn('[Ingest] Advanced columns update failed');
         }
 
     } catch (e: any) {
         throw new Error(`Trace [DB_DOC_CREATE]: ${e.message}`);
     }
 
-    // 3. Chunking (Perform on the Optimized content for better AI retrieval)
+    // 3. Chunking (CRITICAL: Perform on RAW TEXT for 100% data access for the AI)
     const chunks: string[] = [];
     try {
         const chunkSize = 1000;
         const overlap = 200;
 
-        for (let i = 0; i < optimizedContent.length; i += (chunkSize - overlap)) {
-            chunks.push(optimizedContent.slice(i, i + chunkSize));
+        // We use textContent here so the AI brain is 100% verbatim
+        for (let i = 0; i < textContent.length; i += (chunkSize - overlap)) {
+            chunks.push(textContent.slice(i, i + chunkSize));
         }
     } catch (e: any) {
         throw new Error(`Trace [CHUNKING]: ${e.message}`);
