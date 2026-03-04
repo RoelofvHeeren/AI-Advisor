@@ -169,7 +169,7 @@ GO:
         }
 
         // 7. Generate response dynamically with selected model
-        const selectedModel = model || 'gemini-2.0-flash';
+        const selectedModel = model || 'gemini-3-flash-preview';
         const dynamicGeminiModel = genAI.getGenerativeModel({ model: selectedModel });
 
         const result = await dynamicGeminiModel.generateContent(parts);

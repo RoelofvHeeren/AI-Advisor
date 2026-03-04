@@ -46,7 +46,7 @@ function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [allAdvisors, setAllAdvisors] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [model, setModel] = useState('gemini-2.0-flash');
+  const [model, setModel] = useState('gemini-3-flash-preview');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -377,8 +377,9 @@ function ChatInterface() {
                   onChange={e => setModel(e.target.value)}
                   className="bg-black/40 border border-white/10 rounded-lg text-xs text-gray-300 px-2 py-1 outline-none focus:border-[#139187]/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors tracking-wide"
                 >
-                  <option value="gemini-2.0-flash">⚡️ Gemini Flash</option>
-                  <option value="gemini-1.5-pro">🧠 Gemini Pro</option>
+                  <option value="gemini-3-flash-preview">⚡️ Gemini Flash (3.0)</option>
+                  <option value="gemini-3-pro-preview">🧠 Gemini Pro (3.0)</option>
+                  <option value="gemini-2.0-flash">⚡️ Gemini Flash (2.0)</option>
                 </select>
               </div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-mono mt-1">
