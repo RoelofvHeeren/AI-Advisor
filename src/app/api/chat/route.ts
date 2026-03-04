@@ -47,6 +47,29 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No advisors found' }, { status: 404 });
         }
 
+        // 3.5 Fetch Document Titles (Table of Contents)
+        const { data: documents } = await supabase
+            .from('documents')
+            .select('title, advisor_id')
+            .in('advisor_id', advisorIds);
+
+        let documentContext = '';
+        if (documents && documents.length > 0) {
+            documentContext = '\n[COMPLETE KNOWLEDGE LIBRARY INDEX]:\nHere is the full list of all documents/videos this expert has access to (you can refer to this list if the user asks what you know about):\n';
+            advisors.forEach(adv => {
+                const advDocs = documents.filter(d => d.advisor_id === adv.id);
+                if (advDocs.length > 0) {
+                    if (advisors.length > 1) {
+                        documentContext += `\n${adv.name}'s Library:\n`;
+                    }
+                    advDocs.forEach(d => {
+                        documentContext += `- ${d.title}\n`;
+                    });
+                }
+            });
+            documentContext += '\n';
+        }
+
         // 4. Load Previous History if sessionId exists
         let history = '';
         if (sessionId) {
@@ -120,7 +143,7 @@ ${advisors.map(a => `- ${a.name}: ${a.system_prompt}`).join('\n')}
 ${systemPrompt}
 
 ${history ? `PREVIOUS CONVERSATION HISTORY:\n${history}\n` : ''}
-
+${documentContext}
 CONTEXT FROM EXPERT KNOWLEDGE BASES:
 ${combinedContext}
 
