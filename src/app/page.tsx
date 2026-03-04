@@ -11,7 +11,11 @@ import {
   Sparkles,
   Download,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Paperclip,
+  X,
+  File as FileIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +30,12 @@ interface Message {
   content: string;
 }
 
+interface Attachment {
+  name: string;
+  type: string;
+  base64: string;
+}
+
 function ChatInterface() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -36,7 +46,35 @@ function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [allAdvisors, setAllAdvisors] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [model, setModel] = useState('gemini-2.0-flash');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleFiles = async (files: File[]) => {
+    const newAttachments: Attachment[] = [];
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Max 10MB.`);
+        continue;
+      }
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          resolve((reader.result as string).split(',')[1]);
+        };
+      });
+      reader.readAsDataURL(file);
+      const base64 = await base64Promise;
+      newAttachments.push({
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        base64
+      });
+    }
+    setAttachments(prev => [...prev, ...newAttachments]);
+  };
 
   // 1. Fetch all advisors
   useEffect(() => {
@@ -113,16 +151,17 @@ function ChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || selectedIds.length === 0) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading || selectedIds.length === 0) return;
 
     let currentSessionId = sessionId;
 
     if (!currentSessionId) {
+      const titleText = input.trim() ? input.trim().slice(0, 30) : (attachments.length > 0 ? `File: ${attachments[0].name}` : 'New Session');
       const res = await fetch('/api/chat/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: input.trim().slice(0, 30) + '...',
+          title: titleText + '...',
           advisorIds: selectedIds,
           isMastermind: selectedIds.length > 1
         })
@@ -135,8 +174,17 @@ function ChatInterface() {
     }
 
     const userMessage = input.trim();
+    const currentAttachments = [...attachments];
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setAttachments([]);
+
+    let displayContent = userMessage;
+    if (currentAttachments.length > 0) {
+      displayContent += `\n\n*(Attached ${currentAttachments.length} file${currentAttachments.length > 1 ? 's' : ''})*`;
+    }
+    if (!displayContent.trim()) displayContent = "*(Sent attachments)*";
+
+    setMessages(prev => [...prev, { role: 'user', content: displayContent }]);
     setIsLoading(true);
 
     try {
@@ -146,7 +194,9 @@ function ChatInterface() {
         body: JSON.stringify({
           message: userMessage,
           advisorIds: selectedIds,
-          sessionId: currentSessionId
+          sessionId: currentSessionId,
+          model,
+          attachments: currentAttachments
         }),
       });
 
@@ -280,17 +330,58 @@ function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div
+      className="flex flex-col h-full gap-6 relative"
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+      onDrop={async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFiles(Array.from(e.dataTransfer.files));
+        }
+      }}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-[100] bg-[#139187]/10 backdrop-blur-sm border-2 border-dashed border-[#139187] rounded-3xl flex items-center justify-center pointer-events-none">
+          <div className="text-2xl font-serif italic text-white flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#139187]/20 flex items-center justify-center pointer-events-none">
+              <Download size={32} className="text-[#139187]" />
+            </div>
+            Drop files here to attach
+          </div>
+        </div>
+      )}
+      <input
+        type="file"
+        multiple
+        ref={fileInputRef}
+        onChange={(e) => {
+          if (e.target.files) handleFiles(Array.from(e.target.files));
+          e.target.value = ''; // reset
+        }}
+        className="hidden"
+      />
       {/* Top Banner / Advisor Selector */}
-      <section className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-luxury">
+      <section className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-luxury relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-black rounded-xl border border-white/10 flex items-center justify-center text-[#139187] shadow-luxury">
               <Users size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-serif font-bold text-white italic">Active Discussion</h2>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-mono">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-serif font-bold text-white italic">Active Discussion</h2>
+                <select
+                  value={model}
+                  onChange={e => setModel(e.target.value)}
+                  className="bg-black/40 border border-white/10 rounded-lg text-xs text-gray-300 px-2 py-1 outline-none focus:border-[#139187]/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors tracking-wide"
+                >
+                  <option value="gemini-2.0-flash">⚡️ Gemini Flash</option>
+                  <option value="gemini-1.5-pro">🧠 Gemini Pro</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-mono mt-1">
                 {selectedIds.length} ADVISORS SELECTED
               </p>
             </div>
@@ -421,22 +512,47 @@ function ChatInterface() {
       </div>
 
       {/* Input */}
-      <div className="relative pt-4">
+      <div className="relative pt-4 flex flex-col gap-3">
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-2">
+            {attachments.map((att, i) => (
+              <div key={i} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 group relative hover:border-[#139187]/30 transition-colors">
+                {att.type.startsWith('image/') ? <ImageIcon size={14} className="text-[#139187]" /> : <FileIcon size={14} className="text-[#139187]" />}
+                <span className="text-xs text-gray-300 max-w-[150px] truncate">{att.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachments(prev => prev.filter((_, index) => index !== i))}
+                  className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-[#139187] to-indigo-600 rounded-3xl blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
-          <div className="relative flex items-center glass rounded-3xl px-6 py-5 border-white/10 ring-1 ring-white/5 shadow-2xl">
+          <div className="relative flex items-center glass rounded-3xl pl-4 pr-6 py-3 border-white/10 ring-1 ring-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={selectedIds.length === 0}
+              className="p-3 mr-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+            >
+              <Paperclip size={20} />
+            </button>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={selectedIds.length > 0 ? "Ask your discussion panel..." : "Select advisors to start..."}
+              placeholder={selectedIds.length > 0 ? "Ask your discussion panel or drop files..." : "Select advisors to start..."}
               disabled={selectedIds.length === 0}
-              className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 text-base"
+              className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 text-base py-3"
             />
             <button
               type="submit"
-              disabled={isLoading || !input.trim() || selectedIds.length === 0}
-              className="ml-4 p-4 rounded-2xl bg-gradient-to-r from-[#139187] to-[#0d6b63] text-white hover:shadow-[0_0_20px_rgba(19,145,135,0.4)] disabled:opacity-50 transition-all"
+              disabled={isLoading || (!input.trim() && attachments.length === 0) || selectedIds.length === 0}
+              className="ml-4 p-4 rounded-2xl bg-gradient-to-r from-[#139187] to-[#0d6b63] text-white hover:shadow-[0_0_20px_rgba(19,145,135,0.4)] disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
             >
               <Send size={20} />
             </button>

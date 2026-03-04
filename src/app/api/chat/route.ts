@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase-server';
-import { geminiModel, embeddingModel } from '@/lib/gemini';
+import { genAI, embeddingModel } from '@/lib/gemini';
 
 export async function POST(req: Request) {
     try {
-        const { message, sessionId, advisorIds: providedAdvisorIds } = await req.json();
+        const { message, sessionId, advisorIds: providedAdvisorIds, model, attachments } = await req.json();
 
-        if (!message) {
-            return NextResponse.json({ error: 'Missing message' }, { status: 400 });
+        if (!message && (!attachments || attachments.length === 0)) {
+            return NextResponse.json({ error: 'Missing message or attachments' }, { status: 400 });
         }
 
         let advisorIds = providedAdvisorIds;
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
         // 2. Get embedding for the user's message
         const embeddingResult = await (embeddingModel as any).embedContent({
-            content: { role: 'user', parts: [{ text: message }] }
+            content: { role: 'user', parts: [{ text: message || "Attachment provided" }] }
         });
         let queryEmbedding = embeddingResult.embedding.values;
 
@@ -150,22 +150,44 @@ ${combinedContext}
 
 ------
 
-USER QUERY: ${message}
+USER QUERY: ${message || "Please analyze the attached files."}
 
 GO:
     `;
 
-        // 7. Generate response
-        const result = await geminiModel.generateContent(fullPrompt);
+        const parts: any[] = [{ text: fullPrompt }];
+
+        if (attachments && attachments.length > 0) {
+            for (const att of attachments) {
+                parts.push({
+                    inlineData: {
+                        data: att.base64,
+                        mimeType: att.type
+                    }
+                });
+            }
+        }
+
+        // 7. Generate response dynamically with selected model
+        const selectedModel = model || 'gemini-2.0-flash';
+        const dynamicGeminiModel = genAI.getGenerativeModel({ model: selectedModel });
+
+        const result = await dynamicGeminiModel.generateContent(parts);
         const responseText = result.response.text();
 
         // 8. PERSIST TO DB
         if (sessionId) {
+            let dbMessage = message;
+            if (attachments && attachments.length > 0) {
+                dbMessage += `\n\n*(Attached ${attachments.length} file${attachments.length > 1 ? 's' : ''})*`;
+            }
+            if (!dbMessage.trim()) dbMessage = "*(Sent attachments)*";
+
             // Save User Message
             await supabase.from('chat_messages').insert({
                 session_id: sessionId,
                 role: 'user',
-                content: message
+                content: dbMessage.trim()
             });
             // Save Assistant Message
             await supabase.from('chat_messages').insert({
