@@ -85,40 +85,64 @@ export async function ingestContent(params: IngestParams) {
     // Sanitize
     textContent = textContent.replace(/\0/g, '');
 
-    // 1. Synthesize Content (Million Dollar Optimization)
-    let optimizedContent = textContent;
+    // 1. Synthesize Content (Billion Dollar Limitless Optimization)
+    let optimizedContent = '';
     try {
-        console.log('[Ingest] Synthesizing content for superior findability...');
-        // For very long transcripts, we might need a sliding window synthesis or just a powerful model.
-        // We'll increase the snippet size but keep a buffer. 
-        // 100k chars is usually enough for most YouTube videos.
-        const synthesisPrompt = `
+        console.log('[Ingest] Synthesizing content endlessly...');
+
+        const BLOCK_SIZE = 75000;
+        const totalBlocks = Math.ceil(textContent.length / BLOCK_SIZE);
+
+        for (let i = 0; i < totalBlocks; i++) {
+            console.log(`[Ingest] Synthesizing block ${i + 1} of ${totalBlocks}...`);
+            const start = i * BLOCK_SIZE;
+            const end = start + BLOCK_SIZE;
+            const chunk = textContent.slice(start, end);
+
+            const synthesisPrompt = `
             You are a world-class Knowledge Synthesis Engine. 
-            Transform the following raw transcript into a beautifully structured Markdown document.
+            Transform the following raw transcript block (Part ${i + 1} of ${totalBlocks}) into a beautifully structured Markdown document.
             
             CRITICAL RULES:
             1. NEVER DELETE OR SUMMARIZE AWAY ANY INFORMATION. Every fact, quote, and detail must be preserved.
             2. ADD structure: Use hierarchical headers (#, ##, ###), bullet points, and bolded key terms.
-            3. TAGGING: At the bottom, add a "Key Entities & Topics" section with extracted tags.
+            ${i === totalBlocks - 1 ? '3. TAGGING: At the bottom, add a "Key Entities & Topics" section with extracted tags.' : '3. DO NOT ADD a tagging section yet, this is not the final block.'}
             4. FORMATTING: Use tables for comparisons and clean lists for steps.
-            5. OBJECTIVE: Make this document extremely "findable" for an AI and perfectly readable for a human.
+            5. OBJECTIVE: Make this document extremely "findable" for an AI and perfectly readable for a human. Keep the text flowing naturally.
             
-            Raw Transcript Content:
-            ${textContent.substring(0, 100000)} ${textContent.length > 100000 ? '... [Content Truncated for Synthesis Only]' : ''}
-        `;
+            Raw Transcript Content Block:
+            ${chunk}
+            `;
 
-        const result = await geminiModel.generateContent(synthesisPrompt);
-        const response = await result.response;
-        optimizedContent = response.text();
+            let retries = 3;
+            let result;
+            while (retries > 0) {
+                try {
+                    result = await geminiModel.generateContent(synthesisPrompt);
+                    break;
+                } catch (e: any) {
+                    retries--;
+                    if (retries === 0) throw e;
+                    console.warn(`[Ingest] Block ${i + 1} synthesis retry. Resolving in 2s...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
 
-        // If we truncated the synthesis input, append a note for the human.
-        if (textContent.length > 100000) {
-            optimizedContent += '\n\n> [!NOTE]\n> This optimized view is based on the first 100k characters. Use "Deep Search" to query the full verbatim transcript.';
+            if (result) {
+                const response = await result.response;
+                optimizedContent += response.text() + '\\n\\n';
+            }
+
+            // Add a small delay between chunks to avoid rate limiting
+            if (i < totalBlocks - 1) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
         }
 
-        console.log('[Ingest] Synthesis successful.');
+        console.log('[Ingest] Limitless Synthesis successful.');
     } catch (e: any) {
         console.warn('[Ingest] Synthesis failed, falling back to raw text:', e.message);
+        // If it fails mid-way, just use pure raw text to ensure no broken layout
         optimizedContent = textContent;
     }
 

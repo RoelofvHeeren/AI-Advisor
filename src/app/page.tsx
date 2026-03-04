@@ -8,7 +8,10 @@ import {
   Plus,
   Check,
   Users,
-  Sparkles
+  Sparkles,
+  Download,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -160,6 +163,85 @@ function ChatInterface() {
     }
   };
 
+  const downloadPDF = async (content: string, index: number) => {
+    const html2pdf = (await import('html2pdf.js')).default;
+    const element = document.getElementById(`message-content-${index}`);
+    if (!element) return;
+
+    // Create a wrapper element with white background and dark text for better PDF printing
+    const wrapper = document.createElement('div');
+    wrapper.style.backgroundColor = '#ffffff';
+    wrapper.style.color = '#000000';
+    wrapper.style.padding = '40px';
+    wrapper.innerHTML = element.innerHTML;
+
+    // Fix pre/code blocks for light mode
+    wrapper.querySelectorAll('pre').forEach(pre => {
+      pre.style.backgroundColor = '#f1f5f9';
+      pre.style.color = '#0f172a';
+      pre.style.border = '1px solid #e2e8f0';
+      pre.style.padding = '12px';
+      pre.style.borderRadius = '8px';
+    });
+
+    const opt = {
+      margin: 0.5,
+      filename: `Advisor_Document_${Date.now()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(wrapper).save();
+  };
+
+  const downloadMarkdown = (content: string, index: number) => {
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Advisor_Document_${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = (content: string, index: number) => {
+    const lines = content.split('\n');
+    const csvLines = [];
+    let inTable = false;
+
+    for (const line of lines) {
+      if (line.trim().startsWith('|')) {
+        inTable = true;
+        if (line.replace(/[\s|:-]/g, '').length === 0) continue;
+
+        const row = line.split('|').slice(1, -1).map(cell => {
+          let c = cell.trim();
+          if (c.includes(',') || c.includes('"')) {
+            c = `"${c.replace(/"/g, '""')}"`;
+          }
+          return c;
+        });
+        csvLines.push(row.join(','));
+      } else if (inTable) {
+        break; // Stop after first table
+      }
+    }
+
+    if (csvLines.length === 0) {
+      alert("No table found to export as CSV.");
+      return;
+    }
+
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Advisor_Data_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Top Banner / Advisor Selector */}
@@ -263,10 +345,17 @@ function ChatInterface() {
                   {m.role === 'user' ? (
                     <div className="whitespace-pre-wrap">{m.content}</div>
                   ) : (
-                    <div className="prose prose-sm prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {m.content}
-                      </ReactMarkdown>
+                    <div className="flex flex-col gap-2">
+                      <div id={`message-content-${i}`} className="prose prose-sm prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                      <div className="flex gap-4 mt-2 pt-3 border-t border-white/10 opacity-60 hover:opacity-100 transition-opacity">
+                        <button onClick={() => downloadPDF(m.content, i)} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#139187] transition-colors"><FileText size={14} /> Export PDF</button>
+                        <button onClick={() => downloadCSV(m.content, i)} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#139187] transition-colors"><FileSpreadsheet size={14} /> Export CSV</button>
+                        <button onClick={() => downloadMarkdown(m.content, i)} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#139187] transition-colors"><Download size={14} /> Raw Markdown</button>
+                      </div>
                     </div>
                   )}
                 </div>
