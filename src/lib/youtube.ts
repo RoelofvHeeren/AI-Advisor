@@ -134,6 +134,14 @@ export async function getYouTubeTranscript(videoId: string) {
         throw new Error('Library returned empty transcript array');
     } catch (libError: any) {
         console.error('Layer 3 Failed:', libError.message);
-        throw new Error(`ALL LAYERS FAILED. | L1: ${layer1Error} | L2: ${layer2Error} | L3: ${libError.message}`);
+
+        const combinedError = `L1: ${layer1Error} | L2: ${layer2Error} | L3: ${libError.message}`;
+
+        // Check for geographic/government blocks
+        if (combinedError.includes('national security') || combinedError.includes('government') || combinedError.includes('unavailable in this country')) {
+            throw new Error(`GEOGRAPHIC RESTRICTION: This video is blocked in the server's region due to government or legal orders. WORKAROUND: Please copy the transcript manually from YouTube and paste it as "Text" ingestion, or use a VPN if running locally.`);
+        }
+
+        throw new Error(`ALL LAYERS FAILED. | ${combinedError}`);
     }
 }

@@ -54,11 +54,16 @@ export async function ingestContent(params: IngestParams) {
                 throw new Error('Could not extract Video ID from URL.');
             }
 
-            const transcript = await getYouTubeTranscript(videoId);
-            if (!transcript) {
-                throw new Error('No transcript found (all layers failed). The video might not have captions.');
+            if (content && content.trim()) {
+                console.log(`[Ingest] Using provided transcript content for YouTube: ${url}`);
+                textContent = content;
             } else {
-                textContent = transcript;
+                const transcript = await getYouTubeTranscript(videoId);
+                if (!transcript) {
+                    throw new Error('No transcript found (all layers failed). The video might not have captions.');
+                } else {
+                    textContent = transcript;
+                }
             }
 
             if (!finalTitle || finalTitle === 'General Knowledge' || finalTitle === 'YouTube Video') {

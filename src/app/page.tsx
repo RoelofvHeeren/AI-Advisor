@@ -173,7 +173,43 @@ function ChatInterface() {
     wrapper.style.backgroundColor = '#ffffff';
     wrapper.style.color = '#000000';
     wrapper.style.padding = '40px';
+    wrapper.style.fontFamily = 'Georgia, serif'; // Professional look
     wrapper.innerHTML = element.innerHTML;
+
+    // --- CLEANING LOGIC ---
+    // 1. Remove leading conversational P tags (anything before the first header)
+    const firstHeader = wrapper.querySelector('h1, h2, h3, h4');
+    if (firstHeader) {
+      let node = wrapper.firstChild;
+      while (node && node !== firstHeader) {
+        let next = node.nextSibling;
+        wrapper.removeChild(node);
+        node = next;
+      }
+    }
+
+    // 2. Remove "Meta" sections (How to Download, Next Steps, etc.)
+    const metaKeywords = ['how to download', 'next steps', 'would you like me to', 'conclusion'];
+    const nodes = Array.from(wrapper.querySelectorAll('h1, h2, h3, h4, p, strong, div'));
+    let foundMeta = false;
+
+    for (const node of nodes) {
+      const text = node.textContent?.toLowerCase() || '';
+      // If we find a meta keyword in a header or strong tag, we probably hit the end of the doc
+      if (metaKeywords.some(kw => text.includes(kw)) && (node.tagName.startsWith('H') || node.tagName === 'STRONG')) {
+        foundMeta = true;
+      }
+      if (foundMeta) {
+        let current: any = node;
+        while (current) {
+          let next = current.nextSibling;
+          current.remove();
+          current = next;
+        }
+        break;
+      }
+    }
+    // --- END CLEANING ---
 
     // Fix pre/code blocks for light mode
     wrapper.querySelectorAll('pre').forEach(pre => {
@@ -182,6 +218,7 @@ function ChatInterface() {
       pre.style.border = '1px solid #e2e8f0';
       pre.style.padding = '12px';
       pre.style.borderRadius = '8px';
+      pre.style.fontSize = '10px';
     });
 
     const opt = {
