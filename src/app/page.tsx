@@ -187,9 +187,9 @@ function ChatInterface() {
     const opt = {
       margin: 0.5,
       filename: `Advisor_Document_${Date.now()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
     };
 
     html2pdf().set(opt).from(wrapper).save();
