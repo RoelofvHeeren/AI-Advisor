@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "scrape:ghl": "tsx scripts/scrape-ghl.ts",
+    "ingest:ghl": "tsx scripts/ingest-ghl.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -32,6 +34,8 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0",
+    "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
     "youtube-transcript": "^1.2.1"
   },
   "devDependencies": {
@@ -43,6 +47,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
