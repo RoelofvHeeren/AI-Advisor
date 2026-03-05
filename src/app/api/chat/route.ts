@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase-server';
 import { genAI, embeddingModel } from '@/lib/gemini';
 import { FunctionDeclaration, SchemaType } from '@google/generative-ai';
 import { github_list_files, github_read_file, github_create_or_update_file } from '@/lib/tools/github';
+import { ghl_get_contact, ghl_add_note } from '@/lib/tools/ghl';
 
 export async function POST(req: Request) {
     try {
@@ -122,6 +123,10 @@ You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR with UNPRECEDENTED ACCESS to your
     - When the user asks you to create a file or "upload" something to their project, you MUST use the \`github_create_or_update_file\` tool to push the content directly to the repo. Do not ask for permission, just do it.
     - If you are asked to review a project, use \`github_list_files\` to explore the structure, and \`github_read_file\` to read the code, then synthesize your advice.
     - NEVER invent file structures; always use the list tool to verify what actually exists in the repository before reading or writing.
+- GOHIGHLEVEL ACCESS: You have explicit permission to access the user's GoHighLevel accounts for two gyms: "Fifth Ave" and "Barn Gym".
+    - Use \`ghl_get_contact\` to fetch contact details. 
+    - Use \`ghl_add_note\` to record important insights or conversation summaries directly into a contact's profile.
+    - Always ensure you specify the correct gym location (Fifth Ave or Barn Gym) based on the context of the user's query.
 `;
 
         let systemPrompt = '';
@@ -222,9 +227,39 @@ GO:
             }
         ];
 
+        const ghlTools = [
+            {
+                name: "ghl_get_contact",
+                description: "Fetch a contact's details from GoHighLevel using their email address.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        location: { type: SchemaType.STRING, description: "The gym location to check. MUST be either 'Fifth Ave' or 'Barn Gym'." },
+                        email: { type: SchemaType.STRING, description: "The contact's email address" },
+                    },
+                    required: ["location", "email"],
+                },
+            },
+            {
+                name: "ghl_add_note",
+                description: "Add a note or summary to a contact's profile in GoHighLevel.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        location: { type: SchemaType.STRING, description: "The gym location. MUST be either 'Fifth Ave' or 'Barn Gym'." },
+                        contactId: { type: SchemaType.STRING, description: "The ID of the contact in GHL (get this from ghl_get_contact)." },
+                        body: { type: SchemaType.STRING, description: "The text content of the note to add." },
+                    },
+                    required: ["location", "contactId", "body"],
+                },
+            }
+        ];
+
+        const allTools = [...githubTools, ...ghlTools];
+
         const dynamicGeminiModel = genAI.getGenerativeModel({
             model: selectedModel,
-            tools: [{ functionDeclarations: githubTools as FunctionDeclaration[] }]
+            tools: [{ functionDeclarations: allTools as FunctionDeclaration[] }]
         });
 
         // Loop to handle potential multiple tool calls
@@ -247,6 +282,10 @@ GO:
                         funcResult = await github_read_file(call.args as any);
                     } else if (call.name === 'github_create_or_update_file') {
                         funcResult = await github_create_or_update_file(call.args as any);
+                    } else if (call.name === 'ghl_get_contact') {
+                        funcResult = await ghl_get_contact(call.args as any);
+                    } else if (call.name === 'ghl_add_note') {
+                        funcResult = await ghl_add_note(call.args as any);
                     } else {
                         funcResult = { error: `Unknown tool: ${call.name}` };
                     }
