@@ -49,7 +49,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 .from('documents')
                 .select('*')
                 .eq('advisor_id', advisorId)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false }).limit(10000);
             setAdvisor(adv);
             setDocuments(docs || []);
         };
@@ -83,7 +83,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     .from('documents')
                     .select('*')
                     .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false }).limit(10000);
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -123,7 +123,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     .from('documents')
                     .select('*')
                     .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false }).limit(10000);
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -162,7 +162,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     .from('documents')
                     .select('*')
                     .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false }).limit(10000);
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -199,7 +199,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     .from('documents')
                     .select('*')
                     .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false }).limit(10000);
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
@@ -237,7 +237,7 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     .from('documents')
                     .select('*')
                     .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false }).limit(10000);
                 setDocuments(docs || []);
             } else {
                 setStatus(`Error: ${data.error}`);
