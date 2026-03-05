@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Shield, Sliders, Key, Copy, Trash2, Plus, Chrome } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Sliders, Key, Copy, Trash2, Plus, Chrome, Github } from 'lucide-react';
 import { supabaseClient as supabase } from '@/lib/supabase-client';
 
 export default function SettingsPage() {
@@ -252,6 +252,24 @@ export default function SettingsPage() {
                         <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
                             <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Status</p>
                             <p className="text-xs text-white">Gemini 1.5 Specialization Active</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="glass rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Github className="text-[#139187]" size={20} />
+                        <h3 className="text-lg font-bold text-white">Integrations</h3>
+                    </div>
+                    <p className="text-sm text-gray-500">Connect external tools to the AI brain.</p>
+                    <div className="pt-4 space-y-4">
+                        <div className="p-4 bg-black/20 rounded-xl border border-white/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-white flex items-center gap-2">GitHub <span className="text-[10px] bg-[#139187]/20 text-[#139187] px-2 py-0.5 rounded uppercase tracking-wider">Active</span></span>
+                                <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2 py-1 rounded">CONNECTED VIA RAILWAY</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed pt-1">
+                                The AI Advisor has permissions to read, edit, and push code directly to your repositories. Authentication is managed securely via the <code className="bg-black/40 px-1 py-0.5 rounded text-white/80">GITHUB_PAT</code> variable in your Railway dashboard.
+                            </p>
                         </div>
                     </div>
                 </div>
