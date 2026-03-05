@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+// @ts-ignore
 import TurndownService from 'turndown';
 // @ts-ignore
 import { gfm } from 'turndown-plugin-gfm';
