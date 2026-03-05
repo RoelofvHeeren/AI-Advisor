@@ -13,7 +13,10 @@ import {
     Plus,
     Flame,
     History,
-    Trash2
+    Trash2,
+    Edit2,
+    Check,
+    X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -27,6 +30,8 @@ function SidebarContent({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
 
     const [recentChats, setRecentChats] = useState<any[]>([]);
     const [masterminds, setMasterminds] = useState<any[]>([]);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState('');
 
     const fetchSessions = async () => {
         const { data: singles } = await supabase
@@ -93,6 +98,39 @@ function SidebarContent({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
             }
             fetchSessions();
         }
+    };
+
+    const startEditing = (e: React.MouseEvent, id: string, currentTitle: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditingId(id);
+        setEditTitle(currentTitle);
+    };
+
+    const handleRename = async (e: React.MouseEvent | React.FormEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!editTitle.trim()) {
+            setEditingId(null);
+            return;
+        }
+
+        const res = await fetch('/api/chat/sessions', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title: editTitle.trim() })
+        });
+
+        if (res.ok) {
+            setEditingId(null);
+            fetchSessions();
+        }
+    };
+
+    const cancelEditing = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditingId(null);
     };
 
     const navItems = [
@@ -184,27 +222,75 @@ function SidebarContent({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
                             </button>
                         </div>
                         <div className="space-y-1">
-                            {masterminds.map((session) => (
-                                <div key={session.id} className="group/item relative">
-                                    <Link
-                                        href={`/?sessionId=${session.id}`}
-                                        className={cn(
-                                            "block px-4 py-2 pr-10 text-xs rounded-lg transition-all truncate",
-                                            currentSessionId === session.id
-                                                ? "bg-[#139187]/10 text-[#139187] border border-[#139187]/20"
-                                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                            {masterminds.map((session) => {
+                                const advisorNames = session.chat_session_advisors?.map((sa: any) => sa.advisors?.name).filter(Boolean).join(', ');
+                                const isEditing = editingId === session.id;
+
+                                return (
+                                    <div key={session.id} className="group/item relative flex flex-col justify-center min-h-[40px]">
+                                        {isEditing ? (
+                                            <div className={cn(
+                                                "flex flex-col gap-1 px-4 py-2 text-xs rounded-lg",
+                                                currentSessionId === session.id
+                                                    ? "bg-[#139187]/10 border border-[#139187]/20"
+                                                    : "bg-white/5"
+                                            )}>
+                                                <form onSubmit={(e) => handleRename(e, session.id)} className="flex items-center gap-2">
+                                                    <input
+                                                        autoFocus
+                                                        type="text"
+                                                        value={editTitle}
+                                                        onChange={(e) => setEditTitle(e.target.value)}
+                                                        className="flex-1 min-w-0 bg-black/40 border border-[#139187]/50 rounded px-2 py-1 text-white outline-none"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <button type="submit" className="text-[#139187] hover:text-[#139187]/80 shrink-0">
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button type="button" onClick={cancelEditing} className="text-gray-500 hover:text-gray-300 shrink-0">
+                                                        <X size={14} />
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href={`/?sessionId=${session.id}`}
+                                                    className={cn(
+                                                        "block px-4 py-2 pr-16 text-xs rounded-lg transition-all",
+                                                        currentSessionId === session.id
+                                                            ? "bg-[#139187]/10 border border-[#139187]/20"
+                                                            : "hover:bg-white/5 hover:border hover:border-transparent"
+                                                    )}
+                                                >
+                                                    <div className={cn("truncate font-medium flex items-center gap-2", currentSessionId === session.id ? "text-[#139187]" : "text-gray-300 group-hover/item:text-white")}>
+                                                        {session.title}
+                                                    </div>
+                                                    {advisorNames && (
+                                                        <div className={cn("truncate mt-0.5 text-[10px]", currentSessionId === session.id ? "text-[#139187]/70" : "text-gray-500 group-hover/item:text-gray-400")}>
+                                                            feat. {advisorNames}
+                                                        </div>
+                                                    )}
+                                                </Link>
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-40 group-hover/item:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={(e) => startEditing(e, session.id, session.title)}
+                                                        className="p-1.5 hover:text-[#139187] text-gray-400 transition-colors"
+                                                    >
+                                                        <Edit2 size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                                        className="p-1.5 hover:text-red-400 text-gray-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </>
                                         )}
-                                    >
-                                        {session.title}
-                                    </Link>
-                                    <button
-                                        onClick={(e) => handleDeleteSession(e, session.id)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:text-red-400 transition-all text-gray-500"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            ))}
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 )}
@@ -219,27 +305,75 @@ function SidebarContent({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean,
                             </h3>
                         </div>
                         <div className="space-y-1">
-                            {recentChats.map((session) => (
-                                <div key={session.id} className="group/item relative">
-                                    <Link
-                                        href={`/?sessionId=${session.id}`}
-                                        className={cn(
-                                            "block px-4 py-2 pr-10 text-xs rounded-lg transition-all truncate",
-                                            currentSessionId === session.id
-                                                ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                                                : "text-gray-500 hover:text-white hover:bg-white/5"
+                            {recentChats.map((session) => {
+                                const advisorNames = session.chat_session_advisors?.map((sa: any) => sa.advisors?.name).filter(Boolean).join(', ');
+                                const isEditing = editingId === session.id;
+
+                                return (
+                                    <div key={session.id} className="group/item relative flex flex-col justify-center min-h-[40px]">
+                                        {isEditing ? (
+                                            <div className={cn(
+                                                "flex flex-col gap-1 px-4 py-2 text-xs rounded-lg",
+                                                currentSessionId === session.id
+                                                    ? "bg-indigo-500/10 border border-indigo-500/20"
+                                                    : "bg-white/5"
+                                            )}>
+                                                <form onSubmit={(e) => handleRename(e, session.id)} className="flex items-center gap-2">
+                                                    <input
+                                                        autoFocus
+                                                        type="text"
+                                                        value={editTitle}
+                                                        onChange={(e) => setEditTitle(e.target.value)}
+                                                        className="flex-1 min-w-0 bg-black/40 border border-indigo-500/50 rounded px-2 py-1 text-white outline-none"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <button type="submit" className="text-indigo-400 hover:text-indigo-300 shrink-0">
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button type="button" onClick={cancelEditing} className="text-gray-500 hover:text-gray-300 shrink-0">
+                                                        <X size={14} />
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href={`/?sessionId=${session.id}`}
+                                                    className={cn(
+                                                        "block px-4 py-2 pr-16 text-xs rounded-lg transition-all",
+                                                        currentSessionId === session.id
+                                                            ? "bg-indigo-500/10 border border-indigo-500/20"
+                                                            : "hover:bg-white/5 hover:border hover:border-transparent"
+                                                    )}
+                                                >
+                                                    <div className={cn("truncate font-medium", currentSessionId === session.id ? "text-indigo-400" : "text-gray-300 group-hover/item:text-white")}>
+                                                        {session.title}
+                                                    </div>
+                                                    {advisorNames && (
+                                                        <div className={cn("truncate mt-0.5 text-[10px]", currentSessionId === session.id ? "text-indigo-400/70" : "text-gray-500 group-hover/item:text-gray-400")}>
+                                                            feat. {advisorNames}
+                                                        </div>
+                                                    )}
+                                                </Link>
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-40 group-hover/item:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={(e) => startEditing(e, session.id, session.title)}
+                                                        className="p-1.5 hover:text-indigo-400 text-gray-400 transition-colors"
+                                                    >
+                                                        <Edit2 size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteSession(e, session.id)}
+                                                        className="p-1.5 hover:text-red-400 text-gray-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </>
                                         )}
-                                    >
-                                        {session.title}
-                                    </Link>
-                                    <button
-                                        onClick={(e) => handleDeleteSession(e, session.id)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:text-red-400 transition-all text-gray-500"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
-                            ))}
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 )}

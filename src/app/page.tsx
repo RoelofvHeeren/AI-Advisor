@@ -50,6 +50,7 @@ function ChatInterface() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleFiles = async (files: File[]) => {
@@ -130,6 +131,24 @@ function ChatInterface() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const adjustHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [input]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
 
   const getInitials = (name: string) => {
     if (!name) return '??';
@@ -542,13 +561,15 @@ function ChatInterface() {
             >
               <Paperclip size={20} />
             </button>
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
+              rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={selectedIds.length > 0 ? "Ask your discussion panel or drop files..." : "Select advisors to start..."}
               disabled={selectedIds.length === 0}
-              className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 text-base py-3"
+              className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 text-base py-3 resize-none max-h-[200px] overflow-y-auto custom-scrollbar outline-none focus:outline-none"
             />
             <button
               type="submit"

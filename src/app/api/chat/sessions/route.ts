@@ -78,3 +78,25 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function PATCH(req: Request) {
+    try {
+        const { id, title } = await req.json();
+
+        if (!id || !title) {
+            return NextResponse.json({ error: 'Missing ID or title' }, { status: 400 });
+        }
+
+        const { data, error } = await supabase
+            .from('chat_sessions')
+            .update({ title })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return NextResponse.json(data);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}

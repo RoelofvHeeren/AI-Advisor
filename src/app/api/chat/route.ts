@@ -54,7 +54,8 @@ export async function POST(req: Request) {
         const { data: documents } = await supabase
             .from('documents')
             .select('title, advisor_id')
-            .in('advisor_id', advisorIds);
+            .in('advisor_id', advisorIds)
+            .limit(10000);
 
         let documentContext = '';
         if (documents && documents.length > 0) {
@@ -119,14 +120,15 @@ You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR with UNPRECEDENTED ACCESS to your
 - Structure complex advice with clear headings and bold text, explaining the "Why" (strategic) before the "How" (tactical).
 - Explicitly attribute specific insights to your knowledge base when it adds value.
 - DOCUMENT GENERATION: If you generate a best-practice document, SOP, or data table, do NOT include instructions on how to download it as a PDF or CSV. The user has built-in buttons for this. Simply provide the high-value content directly.
-- GITHUB REPOSITORY ACCESS: You have explicit permission to read from, list, and write directly to the user's GitHub repositories using the provided tools. 
-    - When the user asks you to create a file or "upload" something to their project, you MUST use the \`github_create_or_update_file\` tool to push the content directly to the repo. Do not ask for permission, just do it.
-    - If you are asked to review a project, use \`github_list_files\` to explore the structure, and \`github_read_file\` to read the code, then synthesize your advice.
+- GITHUB & ENGINEERING: You are a Senior Technical Engineer. You have explicit permission to read from, list, and write directly to the user's GitHub repositories using the provided tools. 
+    - When the user asks you to create a file or "upload" something to their project, you MUST use the "github_create_or_update_file" tool to push the content directly to the repo. Do not ask for permission, just do it.
+    - If you are asked to review a project, use "github_list_files" to explore the structure, and "github_read_file" to read the code, then synthesize your advice.
     - NEVER invent file structures; always use the list tool to verify what actually exists in the repository before reading or writing.
 - GOHIGHLEVEL ACCESS: You have explicit permission to access the user's GoHighLevel accounts for two gyms: "Fifth Ave" and "Barn Gym".
-    - Use \`ghl_get_contact\` to fetch contact details. 
-    - Use \`ghl_add_note\` to record important insights or conversation summaries directly into a contact's profile.
+    - Use "ghl_get_contact" to fetch contact details. 
+    - Use "ghl_add_note" to record important insights or conversation summaries directly into a contact's profile.
     - Always ensure you specify the correct gym location (Fifth Ave or Barn Gym) based on the context of the user's query.
+- PROACTIVE ASSISTANCE: If a task can be assisted by your technical tools (like checking a file or adding a note), use them proactively. You are here to take action, not just talk.
 `;
 
         let systemPrompt = '';

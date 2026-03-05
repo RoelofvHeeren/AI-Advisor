@@ -287,72 +287,83 @@ saveToAdvisorsBtn.addEventListener('click', async () => {
         }
 
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-        const successfulUrls = new Set();
+        const successfulUrls = new Map(); // Track url -> Set of successful advisorIds
 
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
+        try {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
 
-            const chunks = value.split('\n\n');
-            for (const chunk of chunks) {
-                if (!chunk.trim().startsWith('data: ')) continue;
+                const chunks = value.split('\n\n');
+                for (const chunk of chunks) {
+                    if (!chunk.trim().startsWith('data: ')) continue;
 
-                try {
-                    const data = JSON.parse(chunk.replace('data: ', ''));
+                    try {
+                        const data = JSON.parse(chunk.replace('data: ', ''));
 
-                    if (data.error) {
-                        showStatus(data.error, 'error');
-                        continue;
-                    }
-
-                    const key = `${data.url}-${data.advisorId}`;
-
-                    if (data.type === 'progress') {
-                        let itemEl = progressMap.get(key);
-                        if (!itemEl) {
-                            itemEl = createProgressItem(data.title || data.url, data.status);
-                            progressList.appendChild(itemEl);
-                            progressMap.set(key, itemEl);
-                        }
-                        updateProgressItem(itemEl, 'loading', data.status);
-                        progressSummary.textContent = `Processing ${data.current} of ${data.total}...`;
-                    }
-                    else if (data.type === 'item_success') {
-                        const itemEl = progressMap.get(key);
-                        if (itemEl) {
-                            updateProgressItem(itemEl, 'success', `Complete (${data.chunks} chunks)`);
-                        }
-                        successfulUrls.add(data.url);
-                    }
-                    else if (data.type === 'item_error') {
-                        const itemEl = progressMap.get(key);
-                        if (itemEl) {
-                            updateProgressItem(itemEl, 'error', data.error);
-                        }
-                    }
-                    else if (data.type === 'done') {
-                        progressSummary.textContent = `✓ Processed ${data.total} items. ${data.successful} successful.`;
-
-                        // Clear successful items from queue
-                        if (successfulUrls.size > 0) {
-                            queue = queue.filter(q => !successfulUrls.has(q.url));
-                            await saveQueue();
-                            updateQueueUI();
+                        if (data.error) {
+                            showStatus(data.error, 'error');
+                            continue;
                         }
 
-                        // Reset selections
-                        selectedAdvisors.clear();
-                        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                        const key = `${data.url}-${data.advisorId}`;
 
-                        setTimeout(() => {
-                            progressContainer.classList.add('hidden');
-                            saveToAdvisorsBtn.disabled = false;
-                        }, 5000);
+                        if (data.type === 'progress') {
+                            let itemEl = progressMap.get(key);
+                            if (!itemEl) {
+                                itemEl = createProgressItem(data.title || data.url, data.status);
+                                progressList.appendChild(itemEl);
+                                progressMap.set(key, itemEl);
+                            }
+                            updateProgressItem(itemEl, 'loading', data.status);
+                            progressSummary.textContent = `Processing ${data.current} of ${data.total}...`;
+                        }
+                        else if (data.type === 'item_success') {
+                            const itemEl = progressMap.get(key);
+                            if (itemEl) {
+                                updateProgressItem(itemEl, 'success', `Complete (${data.chunks} chunks)`);
+                            }
+
+                            if (!successfulUrls.has(data.url)) {
+                                successfulUrls.set(data.url, new Set());
+                            }
+                            successfulUrls.get(data.url).add(data.advisorId);
+
+                            // Clean item from queue if it has succeeded for all selected advisors
+                            if (successfulUrls.get(data.url).size === selectedAdvisors.size) {
+                                queue = queue.filter(q => q.url !== data.url);
+                                await saveQueue();
+                                updateQueueUI();
+                            }
+                        }
+                        else if (data.type === 'item_error') {
+                            const itemEl = progressMap.get(key);
+                            if (itemEl) {
+                                updateProgressItem(itemEl, 'error', data.error);
+                            }
+                        }
+                        else if (data.type === 'done') {
+                            progressSummary.textContent = `✓ Processed ${data.total} items. ${data.successful} successful.`;
+
+                            // Reset selections
+                            selectedAdvisors.clear();
+                            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+                            setTimeout(() => {
+                                progressContainer.classList.add('hidden');
+                                saveToAdvisorsBtn.disabled = false;
+                            }, 5000);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse SSE chunk', e);
                     }
-                } catch (e) {
-                    console.error('Failed to parse SSE chunk', e);
                 }
             }
+        } catch (streamError) {
+            console.error('Stream read error (Network Drop):', streamError);
+            showStatus('Network error. Progress saved. Please try again when online.', 'error');
+            progressSummary.textContent = 'Connection lost. Partial progress saved.';
+            saveToAdvisorsBtn.disabled = false;
         }
     } catch (error) {
         showStatus('Error: ' + error.message, 'error');

@@ -37,21 +37,45 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<string | null>(null);
 
-    // Modal state
     const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
     const [viewingDoc, setViewingDoc] = useState<any>(null);
     const [isFetchingDoc, setIsFetchingDoc] = useState(false);
+    const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
+        api: false,
+        support: true,
+        youtube: false
+    });
+
+    const fetchAllDocuments = async () => {
+        let allDocs: any[] = [];
+        let { data: batch } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('advisor_id', advisorId)
+            .order('created_at', { ascending: false });
+
+        if (batch) allDocs = [...batch];
+
+        while (batch && batch.length === 1000) {
+            const { data: nextBatch } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('advisor_id', advisorId)
+                .order('created_at', { ascending: false })
+                .range(allDocs.length, allDocs.length + 999);
+            if (!nextBatch || nextBatch.length === 0) break;
+            allDocs = [...allDocs, ...nextBatch];
+            batch = nextBatch;
+        }
+        return allDocs;
+    };
 
     useEffect(() => {
         const fetchData = async () => {
             const { data: adv } = await supabase.from('advisors').select('*').eq('id', advisorId).single();
-            const { data: docs } = await supabase
-                .from('documents')
-                .select('*')
-                .eq('advisor_id', advisorId)
-                .order('created_at', { ascending: false }).limit(10000);
             setAdvisor(adv);
-            setDocuments(docs || []);
+            const allDocs = await fetchAllDocuments();
+            setDocuments(allDocs);
         };
         fetchData();
     }, [advisorId]);
@@ -78,13 +102,8 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             const data = await res.json();
             if (data.success) {
                 setStatus(`Successfully indexed ${data.chunks} chunks!`);
-                // Refresh docs
-                const { data: docs } = await supabase
-                    .from('documents')
-                    .select('*')
-                    .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false }).limit(10000);
-                setDocuments(docs || []);
+                const allDocs = await fetchAllDocuments();
+                setDocuments(allDocs);
             } else {
                 setStatus(`Error: ${data.error}`);
             }
@@ -118,13 +137,8 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                 setStatus(`Successfully indexed ${data.chunks} chunks!`);
                 setTranscript('');
                 setTitle('');
-                // Refresh docs
-                const { data: docs } = await supabase
-                    .from('documents')
-                    .select('*')
-                    .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false }).limit(10000);
-                setDocuments(docs || []);
+                const allDocs = await fetchAllDocuments();
+                setDocuments(allDocs);
             } else {
                 setStatus(`Error: ${data.error}`);
             }
@@ -157,13 +171,8 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             if (data.success) {
                 setStatus(`Successfully indexed ${data.chunks} chunks from web!`);
                 setUrl('');
-                // Refresh docs
-                const { data: docs } = await supabase
-                    .from('documents')
-                    .select('*')
-                    .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false }).limit(10000);
-                setDocuments(docs || []);
+                const allDocs = await fetchAllDocuments();
+                setDocuments(allDocs);
             } else {
                 setStatus(`Error: ${data.error}`);
             }
@@ -194,13 +203,8 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             if (data.success) {
                 setStatus(`Research complete! Found and indexed ${data.results.length} sources.`);
                 setResearchQuery('');
-                // Refresh docs
-                const { data: docs } = await supabase
-                    .from('documents')
-                    .select('*')
-                    .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false }).limit(10000);
-                setDocuments(docs || []);
+                const allDocs = await fetchAllDocuments();
+                setDocuments(allDocs);
             } else {
                 setStatus(`Error: ${data.error}`);
             }
@@ -232,13 +236,8 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             if (data.success) {
                 setStatus(`Successfully indexed YouTube transcript! (${data.chunks} chunks)`);
                 setYoutubeUrl('');
-                // Refresh docs
-                const { data: docs } = await supabase
-                    .from('documents')
-                    .select('*')
-                    .eq('advisor_id', advisorId)
-                    .order('created_at', { ascending: false }).limit(10000);
-                setDocuments(docs || []);
+                const allDocs = await fetchAllDocuments();
+                setDocuments(allDocs);
             } else {
                 setStatus(`Error: ${data.error}`);
             }
@@ -289,6 +288,16 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
             .join('')
             .toUpperCase()
             .slice(0, 2);
+    };
+
+    const toggleFolder = (folderId: string) => {
+        setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
+    };
+
+    const groupedDocs = {
+        api: documents.filter(d => d.title.startsWith('API Doc:')),
+        youtube: documents.filter(d => d.content_type === 'youtube'),
+        support: documents.filter(d => !d.title.startsWith('API Doc:') && d.content_type !== 'youtube')
     };
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -482,52 +491,136 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
 
-                {/* Bottom Section: List */}
+                {/* Bottom Section: List with Folders */}
                 <div className="space-y-6">
                     <div className="glass rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-white font-bold flex items-center gap-2">
-                                <FileText size={18} className="text-[#139187]" />
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-white font-bold flex items-center gap-2 text-xl">
+                                <FileText size={22} className="text-[#139187]" />
                                 Current Knowledge
                             </h3>
-                            <span className="text-[10px] font-bold text-[#139187] bg-[#139187]/10 px-2 py-1 rounded-lg">
-                                {documents.length} ITEMS
+                            <span className="text-xs font-bold text-[#139187] bg-[#139187]/10 px-3 py-1.5 rounded-xl border border-[#139187]/20 uppercase tracking-wider">
+                                {documents.length} ITEMS TOTAL
                             </span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {documents.map((doc) => (
-                                <div
-                                    key={doc.id}
-                                    onClick={() => handleViewDocument(doc.id)}
-                                    className="p-4 bg-black/30 rounded-xl border border-white/5 group hover:border-[#139187]/40 hover:bg-[#139187]/5 transition-all cursor-pointer relative overflow-hidden"
+
+                        <div className="space-y-4">
+                            {/* API DOCUMENTATION FOLDER */}
+                            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
+                                <button
+                                    onClick={() => toggleFolder('api')}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-white/[0.05] transition-all"
                                 >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${doc.content_type === 'pdf' ? 'bg-amber-500/20 text-amber-500' : doc.content_type === 'youtube' ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
-                                            {doc.content_type}
-                                        </span>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteDocument(doc.id);
-                                            }}
-                                            className="opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all"
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                            <FileText size={20} />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-white font-bold">API Documentation</h4>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">{groupedDocs.api.length} Documents</p>
+                                        </div>
+                                    </div>
+                                    <div className={`text-gray-500 transition-transform duration-300 ${expandedFolders.api ? 'rotate-180' : ''}`}>
+                                        <ArrowLeft size={16} className="-rotate-90" />
+                                    </div>
+                                </button>
+
+                                <AnimatePresence>
+                                    {expandedFolders.api && (
+                                        <motion.div
+                                            initial={{ height: 0 }}
+                                            animate={{ height: 'auto' }}
+                                            exit={{ height: 0 }}
+                                            className="overflow-hidden bg-black/20"
                                         >
-                                            <Trash2 size={14} />
-                                        </button>
+                                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/5">
+                                                {groupedDocs.api.map((doc) => (
+                                                    <DocCard key={doc.id} doc={doc} onDelete={handleDeleteDocument} onView={handleViewDocument} />
+                                                ))}
+                                                {groupedDocs.api.length === 0 && <EmptyFolder />}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            {/* SUPPORT DOCUMENTATION FOLDER (Default Open) */}
+                            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
+                                <button
+                                    onClick={() => toggleFolder('support')}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-white/[0.05] transition-all"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-[#139187]/10 flex items-center justify-center text-[#139187]">
+                                            <FileText size={20} />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-white font-bold">Support Documentation</h4>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">{groupedDocs.support.length} Items</p>
+                                        </div>
                                     </div>
-                                    <p className="text-sm font-bold text-white mb-1 line-clamp-1">{doc.title}</p>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <p className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</p>
-                                        <div className="text-[10px] text-[#139187] font-bold group-hover:translate-x-1 transition-transform">VIEW →</div>
+                                    <div className={`text-gray-500 transition-transform duration-300 ${expandedFolders.support ? 'rotate-180' : ''}`}>
+                                        <ArrowLeft size={16} className="-rotate-90" />
                                     </div>
-                                </div>
-                            ))}
-                            {documents.length === 0 && (
-                                <div className="col-span-full py-12 text-center">
-                                    <AlertCircle className="mx-auto text-gray-600 mb-2" size={32} />
-                                    <p className="text-sm text-gray-500">No knowledge indexed yet.</p>
-                                </div>
-                            )}
+                                </button>
+
+                                <AnimatePresence>
+                                    {expandedFolders.support && (
+                                        <motion.div
+                                            initial={{ height: 0 }}
+                                            animate={{ height: 'auto' }}
+                                            exit={{ height: 0 }}
+                                            className="overflow-hidden bg-black/20"
+                                        >
+                                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/5">
+                                                {groupedDocs.support.map((doc) => (
+                                                    <DocCard key={doc.id} doc={doc} onDelete={handleDeleteDocument} onView={handleViewDocument} />
+                                                ))}
+                                                {groupedDocs.support.length === 0 && <EmptyFolder />}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            {/* YOUTUBE TRANSCRIPTS FOLDER */}
+                            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
+                                <button
+                                    onClick={() => toggleFolder('youtube')}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-white/[0.05] transition-all"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                                            <Youtube size={20} />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-white font-bold">YouTube Transcripts</h4>
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">{groupedDocs.youtube.length} Videos</p>
+                                        </div>
+                                    </div>
+                                    <div className={`text-gray-500 transition-transform duration-300 ${expandedFolders.youtube ? 'rotate-180' : ''}`}>
+                                        <ArrowLeft size={16} className="-rotate-90" />
+                                    </div>
+                                </button>
+
+                                <AnimatePresence>
+                                    {expandedFolders.youtube && (
+                                        <motion.div
+                                            initial={{ height: 0 }}
+                                            animate={{ height: 'auto' }}
+                                            exit={{ height: 0 }}
+                                            className="overflow-hidden bg-black/20"
+                                        >
+                                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/5">
+                                                {groupedDocs.youtube.map((doc) => (
+                                                    <DocCard key={doc.id} doc={doc} onDelete={handleDeleteDocument} onView={handleViewDocument} />
+                                                ))}
+                                                {groupedDocs.youtube.length === 0 && <EmptyFolder />}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -611,6 +704,45 @@ export default function AdvisorKnowledgePage({ params }: { params: Promise<{ id:
                     </motion.div>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+// Helper Components
+function DocCard({ doc, onDelete, onView }: { doc: any, onDelete: (id: string) => void, onView: (id: string) => void }) {
+    return (
+        <div
+            onClick={() => onView(doc.id)}
+            className="p-4 bg-black/40 rounded-xl border border-white/5 group hover:border-[#139187]/40 hover:bg-[#139187]/5 transition-all cursor-pointer relative overflow-hidden"
+        >
+            <div className="flex items-center justify-between mb-3">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${doc.content_type === 'pdf' ? 'bg-amber-500/20 text-amber-500' : doc.content_type === 'youtube' ? 'bg-red-500/20 text-red-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
+                    {doc.content_type}
+                </span>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(doc.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+            <p className="text-sm font-bold text-white mb-1 line-clamp-1">{doc.title}</p>
+            <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</p>
+                <div className="text-[10px] text-[#139187] font-bold group-hover:translate-x-1 transition-transform">VIEW →</div>
+            </div>
+        </div>
+    );
+}
+
+function EmptyFolder() {
+    return (
+        <div className="col-span-full py-12 text-center opacity-50">
+            <AlertCircle className="mx-auto text-gray-600 mb-2" size={32} />
+            <p className="text-sm text-gray-500">No documents in this category.</p>
         </div>
     );
 }
