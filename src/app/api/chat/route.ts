@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase-server';
 import { genAI, embeddingModel } from '@/lib/gemini';
+import { FunctionDeclaration, SchemaType } from '@google/generative-ai';
+import { github_list_files, github_read_file, github_create_or_update_file } from '@/lib/tools/github';
 
 export async function POST(req: Request) {
     try {
@@ -116,6 +118,10 @@ You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR with UNPRECEDENTED ACCESS to your
 - Structure complex advice with clear headings and bold text, explaining the "Why" (strategic) before the "How" (tactical).
 - Explicitly attribute specific insights to your knowledge base when it adds value.
 - DOCUMENT GENERATION: If you generate a best-practice document, SOP, or data table, do NOT include instructions on how to download it as a PDF or CSV. The user has built-in buttons for this. Simply provide the high-value content directly.
+- GITHUB REPOSITORY ACCESS: You have explicit permission to read from, list, and write directly to the user's GitHub repositories using the provided tools. 
+    - When the user asks you to create a file or "upload" something to their project, you MUST use the \`github_create_or_update_file\` tool to push the content directly to the repo. Do not ask for permission, just do it.
+    - If you are asked to review a project, use \`github_list_files\` to explore the structure, and \`github_read_file\` to read the code, then synthesize your advice.
+    - NEVER invent file structures; always use the list tool to verify what actually exists in the repository before reading or writing.
 `;
 
         let systemPrompt = '';
@@ -170,10 +176,99 @@ GO:
 
         // 7. Generate response dynamically with selected model
         const selectedModel = model || 'gemini-3-flash-preview';
-        const dynamicGeminiModel = genAI.getGenerativeModel({ model: selectedModel });
 
-        const result = await dynamicGeminiModel.generateContent(parts);
-        const responseText = result.response.text();
+        // Define GitHub tools schema
+        const githubTools = [
+            {
+                name: "github_list_files",
+                description: "List files and directories in a specific GitHub repository.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        owner: { type: SchemaType.STRING, description: "Repository owner (e.g., 'RoelofvHeeren')" },
+                        repo: { type: SchemaType.STRING, description: "Repository name (e.g., 'AI-Advisor')" },
+                        path: { type: SchemaType.STRING, description: "Optional path to list contents of a specific directory" },
+                    },
+                    required: ["owner", "repo"],
+                },
+            },
+            {
+                name: "github_read_file",
+                description: "Read the exact content of a specific file from a GitHub repository.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        owner: { type: SchemaType.STRING, description: "Repository owner (e.g., 'RoelofvHeeren')" },
+                        repo: { type: SchemaType.STRING, description: "Repository name (e.g., 'AI-Advisor')" },
+                        path: { type: SchemaType.STRING, description: "Full path to the file (e.g., 'src/app/page.tsx')" },
+                    },
+                    required: ["owner", "repo", "path"],
+                },
+            },
+            {
+                name: "github_create_or_update_file",
+                description: "Push changes or create a new file directly into a GitHub repository.",
+                parameters: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        owner: { type: SchemaType.STRING, description: "Repository owner (e.g., 'RoelofvHeeren')" },
+                        repo: { type: SchemaType.STRING, description: "Repository name (e.g., 'AI-Advisor')" },
+                        path: { type: SchemaType.STRING, description: "Full path to the file to create or update (e.g., 'docs/best-practices.md')" },
+                        content: { type: SchemaType.STRING, description: "The full raw text content to write to the file." },
+                        commit_message: { type: SchemaType.STRING, description: "A concise commit message explaining the change." },
+                    },
+                    required: ["owner", "repo", "path", "content", "commit_message"],
+                },
+            }
+        ];
+
+        const dynamicGeminiModel = genAI.getGenerativeModel({
+            model: selectedModel,
+            tools: [{ functionDeclarations: githubTools as FunctionDeclaration[] }]
+        });
+
+        // Loop to handle potential multiple tool calls
+        let chatSession = dynamicGeminiModel.startChat({ history: [] }); // We pass history manually via parts, so start new
+        let result = await chatSession.sendMessage(parts);
+        let responseText = '';
+
+        let toolCalls = result.response.functionCalls();
+        while (toolCalls && toolCalls.length > 0) {
+            const toolResults = [];
+
+            for (const call of toolCalls) {
+                console.log('AI Requested Tool:', call.name, call.args);
+                let funcResult: any;
+
+                try {
+                    if (call.name === 'github_list_files') {
+                        funcResult = await github_list_files(call.args as any);
+                    } else if (call.name === 'github_read_file') {
+                        funcResult = await github_read_file(call.args as any);
+                    } else if (call.name === 'github_create_or_update_file') {
+                        funcResult = await github_create_or_update_file(call.args as any);
+                    } else {
+                        funcResult = { error: `Unknown tool: ${call.name}` };
+                    }
+                } catch (e: any) {
+                    console.error(`Tool Execution Error (${call.name}):`, e.message);
+                    funcResult = { error: e.message };
+                }
+
+                toolResults.push({
+                    functionResponse: {
+                        name: call.name,
+                        response: funcResult
+                    }
+                });
+            }
+
+            // Send tool results back to the model
+            result = await chatSession.sendMessage(toolResults);
+            toolCalls = result.response.functionCalls();
+        }
+
+        responseText = result.response.text();
 
         // 8. PERSIST TO DB
         if (sessionId) {
