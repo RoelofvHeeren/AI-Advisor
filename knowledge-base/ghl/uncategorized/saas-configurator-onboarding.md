@@ -1,0 +1,17 @@
+---
+title: "SaaS Configurator Onboarding"
+url: "https://help.gohighlevel.com/support/solutions/articles/155000004199-saas-configurator-onboarding"
+category: "Uncategorized"
+---
+
+# SaaS Configurator Onboarding
+
+  
+
+  
+
+The first time you use the SaaS Configurator to setup SaaS Mode there are helpful onboarding widgets.
+
+* * *
+
+<table class="fr-no-borders fr-alternate-rows" style="width: 100%;"><tbody><tr><td dir="ltr" style="width: 33.1476%;">The first time you use the SaaS Configurator you will see this screen. There are two payment structures to choose from.<br><br>Stripe - Stripe has always had native support in HighLevel so this one is simple.<br><br>Other - If you want to use a payment provider other than Stripe, or you want to mix and match payment providers, then this one has the flexibility you need.</td><td style="width: 66.8524%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036601136/original/cZ1fsNmpxOvNehhxe7H5yKk4UCQlJDrQUQ.png?1731642926" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036601136"></td></tr><tr><td dir="ltr" style="width: 33.1476%;">SaaS Mode is a combination of the Agency SaaS Configurator and one or more Agency Subaccounts with SaaS Products in them.<br><br>In brief:<br><ul><li dir="ltr">Create a Subaccount for your Agency</li><li dir="ltr">Create a SaaS Product via Agency Account &gt; SaaS Configurator &gt; Plans &amp; Pricing &gt; Add Your Plan OR go to Agency Subaccount &gt; Payments &gt; Products &gt; New Product directly (they go to the same place)</li><li dir="ltr">Toggle "use as SaaS Product"</li><li dir="ltr">Build and save the SaaS Plan</li><li dir="ltr">The Subaccount and the SaaS Plan will show up in the SaaS Configurator</li></ul><p dir="ltr">See this article for the full details: <a dir="ltr" href="https://help.gohighlevel.com/en/support/solutions/articles/155000003670">Guide to SaaS Plan Creation, Sales, and Customer Onboarding</a></p><p><br></p></td><td style="width: 66.8524%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036656123/original/rGLwBAFvuVcS9npEiz0p0p-LNFJL1RkMoA.png?1731693603" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036656123"></td></tr><tr><td dir="ltr" style="width: 33.1476%;">You can have many Agency Subaccounts and many SaaS Plans in each of them. They will all be gathered together in the Agency SaaS Configurator.<br></td><td style="width: 66.8524%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036654931/original/VPTIc3USYS6qrI3HudDkw8gddyHFguwjrA.png?1731691564" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036654931"></td></tr><tr><td dir="ltr" style="width: 33.1476%;">You can use many Payment Providers because those integrations are controlled in each Subaccount.<br></td><td style="width: 66.8524%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036656356/original/AP9tNtaQyu_1qL9RLVPNgngiHMMJyLF3xw.png?1731694270" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036656356"></td></tr></tbody></table>

@@ -1,0 +1,21 @@
+---
+title: "Accept Payments on Stripe Mobile POS Terminals"
+url: "https://help.gohighlevel.com/support/solutions/articles/155000004148-accept-payments-on-stripe-mobile-pos-terminals"
+category: "Uncategorized"
+---
+
+# Accept Payments on Stripe Mobile POS Terminals
+
+You can connect select payment terminals (sold by Stripe) to the mobile app and accept payments by having your customers tap, insert, or swipe their cards on the terminal! This is available on HighLevel, Leadconnector, and Whitelabelled apps.
+
+  
+
+Supported terminals are Stripe M2 reader and BBPOS WisePad 3.
+
+* * *
+
+## **How To Accept Payments Through A Hardware Terminal**
+
+After installing your preferred mobile app (HighLevel, LeadConnector, or Whitelabelled) on your device, proceed to...
+
+<table class="fr-alternate-rows fr-no-borders" style="width: 100%;"><tbody><tr><td dir="ltr" style="width: 25.8357%;">Open the Navigation menu &gt; Settings (gear icon)</td><td style="width: 74.1643%;"><br></td></tr><tr><td dir="ltr" style="width: 25.8357%;">Tap on Payment Devices<br>If you have already l<span dir="ltr" style="color: rgb(0, 0, 0); font-family: -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif; font-size: 13px; font-weight: 400; text-align: left; text-indent: 0px; display: inline !important;">inked a payments device before, you will see a record of it under the "My devices" section.</span><br><p dir="ltr">If you are connecting a device for the first time, the screen will automatically open up in pairing mode. Make sure that your payments terminal is turned on and has at least 25% battery.</p></td><td style="width: 74.1643%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036272657/original/AwsTkFf7tcdfGSZNMyGht5_GrDOrBcP6lA.png?1731113374" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036272657"></td></tr><tr><td style="width: 25.8357%;"><p dir="ltr">Once the terminal shows up on the pairing screen, tap on connect. The app will check the terminal for any potential updates along with the status. Once the pairing process is complete and all updates have been installed, you can start using the terminal to accept payments.</p></td><td style="width: 74.1643%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036272669/original/9O1DjTwCzyt0gn2pfF8krf6hz_QFWk3mYw.png?1731113477" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036272669"></td></tr><tr><td dir="ltr" style="width: 25.8357%;">Go to the POS tab or Invoices, based on your preference.</td><td style="width: 74.1643%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036272675/original/Xim0--vS3VtbeORRbknK2XAym5bavuyoNQ.png?1731113549" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036272675"></td></tr><tr><td dir="ltr" style="width: 25.8357%;">Under the payments instruments screen, you will see a tile titled "Pay with Hardware". Tap on that and the terminal will be prompted to accept payment.<br></td><td style="width: 74.1643%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036272684/original/plKFYBMyWxMz_b2B5v_spSidRIgENylQZw.png?1731113588" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036272684"></td></tr><tr><td style="width: 25.8357%;"><p dir="ltr">Your customer can then tap, insert, or swipe their card to complete the transaction!</p></td><td style="width: 74.1643%;"><img src="https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/155036272698/original/3tQTbbfls8yF3Nv2rHy1yp_dlUZxXkuqng.png?1731113667" style="width: auto; max-width: 100%;" class="fr-fic fr-fil fr-dib" data-attachment="[object Object]" data-id="155036272698"></td></tr></tbody></table>
