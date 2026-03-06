@@ -522,7 +522,7 @@ function ChatInterface() {
                   <LoaderIcon className="animate-spin text-[#139187]" />
                 </div>
                 <div className="px-5 py-3.5 rounded-2xl glass border-white/5 text-gray-500 italic text-sm">
-                  Consulting your advisors...
+                  {selectedIds.length > 1 ? "Advisors are entering consensus..." : "Consulting your advisor..."}
                 </div>
               </div>
             </motion.div>

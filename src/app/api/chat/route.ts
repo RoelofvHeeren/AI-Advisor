@@ -181,10 +181,7 @@ GO:
             }
         }
 
-        // 7. Generate response dynamically with selected model
-        const selectedModel = model || 'gemini-3-flash-preview';
-
-        // Define GitHub tools schema
+        // 7. Define Tools
         const githubTools = [
             {
                 name: "github_list_files",
@@ -258,60 +255,121 @@ GO:
         ];
 
         const allTools = [...githubTools, ...ghlTools];
+        const selectedModel = model || 'gemini-3-flash-preview';
 
-        const dynamicGeminiModel = genAI.getGenerativeModel({
-            model: selectedModel,
-            tools: [{ functionDeclarations: allTools as FunctionDeclaration[] }]
-        });
+        // 8. Execution Helper
+        const executeChat = async (sysPrompt: string, userParts: any[], useTools: boolean = true) => {
+            const dynamicGeminiModel = genAI.getGenerativeModel({
+                model: selectedModel,
+                systemInstruction: sysPrompt,
+                tools: useTools ? [{ functionDeclarations: allTools as FunctionDeclaration[] }] : []
+            });
 
-        // Loop to handle potential multiple tool calls
-        let chatSession = dynamicGeminiModel.startChat({ history: [] }); // We pass history manually via parts, so start new
-        let result = await chatSession.sendMessage(parts);
+            let chatSession = dynamicGeminiModel.startChat({ history: [] });
+            let result = await chatSession.sendMessage(userParts);
+
+            let toolCalls = result.response.functionCalls();
+            while (toolCalls && toolCalls.length > 0) {
+                const toolResults = [];
+                for (const call of toolCalls) {
+                    let funcResult: any;
+                    try {
+                        if (call.name === 'github_list_files') funcResult = await github_list_files(call.args as any);
+                        else if (call.name === 'github_read_file') funcResult = await github_read_file(call.args as any);
+                        else if (call.name === 'github_create_or_update_file') funcResult = await github_create_or_update_file(call.args as any);
+                        else if (call.name === 'ghl_get_contact') funcResult = await ghl_get_contact(call.args as any);
+                        else if (call.name === 'ghl_add_note') funcResult = await ghl_add_note(call.args as any);
+                        else funcResult = { error: `Unknown tool: ${call.name}` };
+                    } catch (e: any) {
+                        funcResult = { error: e.message };
+                    }
+
+                    const wrappedResult = (Array.isArray(funcResult) || typeof funcResult !== 'object')
+                        ? { result: funcResult }
+                        : funcResult;
+
+                    toolResults.push({
+                        functionResponse: { name: call.name, response: wrappedResult }
+                    });
+                }
+                result = await chatSession.sendMessage(toolResults);
+                toolCalls = result.response.functionCalls();
+            }
+            return result.response.text();
+        };
+
+        // 9. Multi-Round Consensus vs. Single Advisor
         let responseText = '';
 
-        let toolCalls = result.response.functionCalls();
-        while (toolCalls && toolCalls.length > 0) {
-            const toolResults = [];
+        if (advisors.length === 1) {
+            const sysPrompt = `${advisors[0].system_prompt}\n\n${MENTOR_INSTRUCTION}`;
+            const initialUserParts = [
+                { text: `PREVIOUS CONVERSATION HISTORY:\n${history || 'No previous history.'}` },
+                { text: documentContext },
+                { text: `CONTEXT FROM EXPERT KNOWLEDGE BASES:\n${combinedContext}` },
+                { text: `USER QUERY: ${message || "Please analyze the attached files."}` }
+            ];
+            if (attachments && attachments.length > 0) {
+                for (const att of attachments) initialUserParts.push({ inlineData: { data: att.base64, mimeType: att.type } } as any);
+            }
+            responseText = await executeChat(sysPrompt, initialUserParts);
+        } else {
+            // ROUND 1: Individual Perspectives (Parallel)
+            console.log(`Starting Mastermind Round 1: ${advisors.length} Advisors`);
+            const perspectivePromises = advisors.map((adv, idx) => {
+                const advContext = contextResults[idx].data?.map((c: any) => c.content).join('\n') || 'No specific context.';
+                const advisorSysPrompt = `
+${adv.system_prompt}
 
-            for (const call of toolCalls) {
-                console.log('AI Requested Tool:', call.name, call.args);
-                let funcResult: any;
-
-                try {
-                    if (call.name === 'github_list_files') {
-                        funcResult = await github_list_files(call.args as any);
-                    } else if (call.name === 'github_read_file') {
-                        funcResult = await github_read_file(call.args as any);
-                    } else if (call.name === 'github_create_or_update_file') {
-                        funcResult = await github_create_or_update_file(call.args as any);
-                    } else if (call.name === 'ghl_get_contact') {
-                        funcResult = await ghl_get_contact(call.args as any);
-                    } else if (call.name === 'ghl_add_note') {
-                        funcResult = await ghl_add_note(call.args as any);
-                    } else {
-                        funcResult = { error: `Unknown tool: ${call.name}` };
-                    }
-                } catch (e: any) {
-                    console.error(`Tool Execution Error (${call.name}):`, e.message);
-                    funcResult = { error: e.message };
+TASK: Provide your initial expert assessment of the user's query based on your specialized knowledge. 
+Be direct, expert, and thorough. This response will be reviewed by other experts in the mastermind.
+`;
+                const advisorUserParts = [
+                    { text: `PREVIOUS CONVERSATION HISTORY:\n${history || 'No previous history.'}` },
+                    { text: `YOUR SPECIALIZED KNOWLEDGE BASE SNIPPETS:\n${advContext}` },
+                    { text: `USER QUERY: ${message || "Please analyze the attached files."}` }
+                ];
+                if (attachments && attachments.length > 0) {
+                    for (const att of attachments) advisorUserParts.push({ inlineData: { data: att.base64, mimeType: att.type } } as any);
                 }
+                // We disable tool usage for individual perspectives to keep it fast
+                return executeChat(advisorSysPrompt, advisorUserParts, false);
+            });
 
-                toolResults.push({
-                    functionResponse: {
-                        name: call.name,
-                        response: funcResult
-                    }
-                });
+            const perspectives = await Promise.all(perspectivePromises);
+            const aggregatedPerspectives = perspectives.map((p, i) => `### ${advisors[i].name}'s Assessment:\n${p}`).join('\n\n');
+
+            // ROUND 2: Final Consensus (Facilitator)
+            console.log(`Starting Mastermind Round 2: Consensus Facilitation`);
+            const facilitatorSysPrompt = `
+You are facilitating a high-level Mastermind session between: ${advisors.map(a => a.name).join(', ')}.
+
+ROUND 1 INPUTS:
+The experts have provided their individual assessments below.
+
+YOUR GOAL:
+1. Review all expert assessments.
+2. Synthesize a unified, high-impact consensus response.
+3. If there are conflicting viewpoints, highlight the trade-offs and suggest the best path forward.
+4. Use the provided tools (GitHub, GHL) to take proactive action where necessary.
+
+${MENTOR_INSTRUCTION}
+`;
+            const facilitatorUserParts = [
+                { text: `PREVIOUS CONVERSATION HISTORY:\n${history || 'No previous history.'}` },
+                { text: documentContext },
+                { text: `EXPERT PERSPECTIVES FROM ROUND 1:\n${aggregatedPerspectives}` },
+                { text: `CONTEXT FROM ALL KNOWLEDGE BASES:\n${combinedContext}` },
+                { text: `USER QUERY: ${message || "Please analyze the attached files."}` }
+            ];
+            if (attachments && attachments.length > 0) {
+                for (const att of attachments) facilitatorUserParts.push({ inlineData: { data: att.base64, mimeType: att.type } } as any);
             }
 
-            // Send tool results back to the model
-            result = await chatSession.sendMessage(toolResults);
-            toolCalls = result.response.functionCalls();
+            responseText = await executeChat(facilitatorSysPrompt, facilitatorUserParts, true);
         }
 
-        responseText = result.response.text();
-
-        // 8. PERSIST TO DB
+        // 10. PERSIST TO DB
         if (sessionId) {
             let dbMessage = message;
             if (attachments && attachments.length > 0) {
@@ -319,19 +377,16 @@ GO:
             }
             if (!dbMessage.trim()) dbMessage = "*(Sent attachments)*";
 
-            // Save User Message
             await supabase.from('chat_messages').insert({
                 session_id: sessionId,
                 role: 'user',
                 content: dbMessage.trim()
             });
-            // Save Assistant Message
             await supabase.from('chat_messages').insert({
                 session_id: sessionId,
                 role: 'assistant',
                 content: responseText
             });
-            // Update last_message_at
             await supabase.from('chat_sessions').update({
                 last_message_at: new Date().toISOString()
             }).eq('id', sessionId);
