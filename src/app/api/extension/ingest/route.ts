@@ -83,13 +83,14 @@ export async function POST(req: Request) {
                     // Process for each advisor
                     for (const advisorId of advisorIds) {
                         try {
+                            // Initial progress event
                             sendEvent({
                                 type: 'progress',
                                 url,
                                 title,
                                 advisorId,
-                                status: 'Processing...',
-                                current: ++completedSteps,
+                                status: 'Initializing...',
+                                current: completedSteps + 1,
                                 total: totalSteps
                             });
 
@@ -97,8 +98,20 @@ export async function POST(req: Request) {
                                 advisorId,
                                 type,
                                 url,
-                                title
+                                title,
+                                onStatusUpdate: (status) => {
+                                    sendEvent({
+                                        type: 'progress',
+                                        url,
+                                        title,
+                                        advisorId,
+                                        status,
+                                        current: completedSteps + 1,
+                                        total: totalSteps
+                                    });
+                                }
                             });
+                            completedSteps++;
 
                             results.push({
                                 url,

@@ -10,10 +10,16 @@ export interface IngestParams {
     title?: string;
     content?: string;
     file?: Buffer | Blob;
+    onStatusUpdate?: (status: string) => void;
 }
 
 export async function ingestContent(params: IngestParams) {
-    const { advisorId, type, url, title, content, file } = params;
+    const { advisorId, type, url, title, content, file, onStatusUpdate } = params;
+
+    const reportProgress = (status: string) => {
+        if (onStatusUpdate) onStatusUpdate(status);
+        console.log(`[Ingest Progress] ${status}`);
+    };
 
     if (!advisorId) throw new Error('Missing advisorId');
 
@@ -25,7 +31,7 @@ export async function ingestContent(params: IngestParams) {
     } else if (type === 'web') {
         if (!url) throw new Error('Missing URL for web ingestion');
         try {
-            console.log(`[Ingest] Fetching web page: ${url}`);
+            reportProgress(`Fetching web page: ${url}`);
             const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
             if (!res.ok) throw new Error(`Web fetch failed with status ${res.status}`);
             const html = await res.text();
@@ -45,7 +51,7 @@ export async function ingestContent(params: IngestParams) {
     } else if (type === 'youtube') {
         if (!url) throw new Error('Missing YouTube URL');
         try {
-            console.log(`[Ingest] Processing YouTube: ${url}`);
+            reportProgress(`Processing YouTube video: ${url}`);
             // Extract video ID
             const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|\/v\/|shorts\/|embed\/))([^?&"'>]+)/);
             const videoId = videoIdMatch ? videoIdMatch[1] : null;
@@ -55,9 +61,10 @@ export async function ingestContent(params: IngestParams) {
             }
 
             if (content && content.trim()) {
-                console.log(`[Ingest] Using provided transcript content for YouTube: ${url}`);
+                reportProgress('Using provided transcript content');
                 textContent = content;
             } else {
+                reportProgress('Fetching transcript from YouTube...');
                 const transcript = await getYouTubeTranscript(videoId);
                 if (!transcript) {
                     throw new Error('No transcript found (all layers failed). The video might not have captions.');
@@ -76,6 +83,7 @@ export async function ingestContent(params: IngestParams) {
     }
     else if (type === 'pdf') {
         if (!file) throw new Error('No PDF file provided');
+        reportProgress('Parsing PDF file...');
         const buffer = file instanceof Buffer ? file : Buffer.from(await (file as Blob).arrayBuffer());
 
         const pdf = (await import('pdf-parse')).default;
@@ -93,13 +101,13 @@ export async function ingestContent(params: IngestParams) {
     // 1. Synthesize Content (Billion Dollar Limitless Optimization)
     let optimizedContent = '';
     try {
-        console.log('[Ingest] Synthesizing content endlessly...');
+        reportProgress('Starting knowledge synthesis...');
 
         const BLOCK_SIZE = 75000;
         const totalBlocks = Math.ceil(textContent.length / BLOCK_SIZE);
 
         for (let i = 0; i < totalBlocks; i++) {
-            console.log(`[Ingest] Synthesizing block ${i + 1} of ${totalBlocks}...`);
+            reportProgress(`Synthesizing knowledge block ${i + 1} of ${totalBlocks}...`);
             const start = i * BLOCK_SIZE;
             const end = start + BLOCK_SIZE;
             const chunk = textContent.slice(start, end);
@@ -128,14 +136,14 @@ export async function ingestContent(params: IngestParams) {
                 } catch (e: any) {
                     retries--;
                     if (retries === 0) throw e;
-                    console.warn(`[Ingest] Block ${i + 1} synthesis retry. Resolving in 2s...`);
+                    reportProgress(`Synthesis retry for block ${i + 1}...`);
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
 
             if (result) {
                 const response = await result.response;
-                optimizedContent += response.text() + '\\n\\n';
+                optimizedContent += response.text() + '\n\n';
             }
 
             // Add a small delay between chunks to avoid rate limiting
@@ -144,9 +152,10 @@ export async function ingestContent(params: IngestParams) {
             }
         }
 
-        console.log('[Ingest] Limitless Synthesis successful.');
+        reportProgress('Knowledge synthesis complete.');
     } catch (e: any) {
         console.warn('[Ingest] Synthesis failed, falling back to raw text:', e.message);
+        reportProgress('Synthesis failed, using raw text fallback.');
         // If it fails mid-way, just use pure raw text to ensure no broken layout
         optimizedContent = textContent;
     }
@@ -154,9 +163,7 @@ export async function ingestContent(params: IngestParams) {
     // 2. Create Document Entry
     let docId: string;
     try {
-        // We try to insert into our new columns if they exist. 
-        // Supabase will error if we insert columns that don't exist yet.
-        // So we'll try the "new way" first, fallback to "old way" if it fails.
+        reportProgress('Finalizing document in database...');
         let insertData: any = {
             advisor_id: advisorId,
             title: finalTitle,
@@ -170,7 +177,6 @@ export async function ingestContent(params: IngestParams) {
             .single();
 
         if (docError) {
-            console.error('Initial insert failed, trying to update later:', docError.message);
             throw docError;
         }
 
@@ -193,6 +199,7 @@ export async function ingestContent(params: IngestParams) {
     // 3. Chunking (CRITICAL: Perform on RAW TEXT for 100% data access for the AI)
     const chunks: string[] = [];
     try {
+        reportProgress('Chunking content for indexing...');
         const chunkSize = 1000;
         const overlap = 200;
 
@@ -206,7 +213,15 @@ export async function ingestContent(params: IngestParams) {
 
     // 4. Embedding & Insertion
     try {
-        for (const chunkContent of chunks) {
+        const totalChunks = chunks.length;
+        reportProgress(`Generating embeddings for ${totalChunks} chunks...`);
+        for (let idx = 0; idx < chunks.length; idx++) {
+            const chunkContent = chunks[idx];
+
+            if (idx % 5 === 0) {
+                reportProgress(`Indexing: ${idx + 1}/${totalChunks} chunks...`);
+            }
+
             let result;
             let retries = 3;
             let delay = 1000;
@@ -218,7 +233,6 @@ export async function ingestContent(params: IngestParams) {
                     });
                     break;
                 } catch (e: any) {
-                    console.warn(`[Ingest] Embedding retry remaining: ${retries - 1}. Error: ${e.message}`);
                     retries--;
                     if (retries === 0) throw e;
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -240,9 +254,10 @@ export async function ingestContent(params: IngestParams) {
 
             // Small cooldown between chunks if we have many
             if (chunks.length > 5) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
         }
+        reportProgress('Indexing complete.');
     } catch (e: any) {
         throw new Error(`Trace [EMBEDDING_DB]: ${e.message}`);
     }
