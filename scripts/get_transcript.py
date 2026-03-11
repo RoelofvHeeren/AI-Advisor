@@ -1,55 +1,58 @@
 import sys
 import json
 import os
+import youtube_transcript_api
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import (
-    TranscriptsDisabled,
-    NoTranscriptFound,
-    CouldNotRetrieveTranscript,
-    VideoUnavailable,
-    YouTubeRequestFailed
-)
-
-try:
-    from youtube_transcript_api.proxies import WebshareProxyConfig, GenericProxyConfig
-except ImportError:
-    WebshareProxyConfig = None
-    GenericProxyConfig = None
 
 def get_transcript(video_id):
     try:
-        username = os.environ.get("PROXY_USERNAME")
-        password = os.environ.get("PROXY_PASSWORD")
         proxy_url = os.environ.get("PROXY_URL")
-        
         proxies = None
         if proxy_url:
-            proxies = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
+            proxies = {"http": proxy_url, "https": proxy_url}
 
-        # Try to get transcript
-        try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
-            transcript = transcript_list.find_transcript(['en'])
-            transcript_data = transcript.fetch()
-        except (TranscriptsDisabled, NoTranscriptFound, NoTranscriptAvailable) if 'NoTranscriptAvailable' in globals() else (TranscriptsDisabled, NoTranscriptFound):
-            return {"success": False, "error": "TRANSCRIPTS_DISABLED", "details": "Transcripts are disabled or not found for this video."}
-        except VideoUnavailable:
-            return {"success": False, "error": "VIDEO_UNAVAILABLE", "details": "The video is unavailable."}
-        except YouTubeRequestFailed as e:
-            return {"success": False, "error": "YOUTUBE_REQUEST_FAILED", "details": str(e)}
-        except Exception as e:
-            # Check for the specific "no element found" error which often means transcript issues
-            if "no element found" in str(e).lower():
-                 return {"success": False, "error": "TRANSCRIPTS_DISABLED", "details": "YouTube returned empty response for transcripts (no element found)."}
-            raise e
+        transcript_data = None
         
-        full_transcript = " ".join([t['text'] for t in transcript_data])
-        return {"success": True, "transcript": full_transcript}
+        # Try the modern list_transcripts API first
+        if hasattr(YouTubeTranscriptApi, 'list_transcripts'):
+            try:
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
+                try:
+                    transcript = transcript_list.find_transcript(['en'])
+                except Exception:
+                    transcript = next(iter(transcript_list))
+                transcript_data = transcript.fetch()
+            except Exception as e:
+                # If list_transcripts exists but fails, try the older API as a fallback
+                if hasattr(YouTubeTranscriptApi, 'get_transcript'):
+                    try:
+                        transcript_data = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
+                    except Exception:
+                        raise e # Raise the original error from list_transcripts if both fail
+                else:
+                    raise e
+        elif hasattr(YouTubeTranscriptApi, 'get_transcript'):
+            # Older API
+            transcript_data = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
+        else:
+            return {"success": False, "error": "LIBRARY_INCOMPATIBLE", "details": "YouTubeTranscriptApi has neither list_transcripts nor get_transcript."}
+
+        if transcript_data:
+            full_transcript = " ".join([t['text'] for t in transcript_data])
+            return {"success": True, "transcript": full_transcript}
+        else:
+            return {"success": False, "error": "EMPTY_TRANSCRIPT", "details": "Library returned no data."}
+
     except Exception as e:
-        return {"success": False, "error": "UNEXPECTED_ERROR", "details": str(e)}
+        error_msg = str(e)
+        # Standardize error categories
+        if any(pattern in error_msg.lower() for pattern in ["disabled", "no transcript", "not found"]):
+            return {"success": False, "error": "TRANSCRIPTS_DISABLED", "details": error_msg}
+        if "no element found" in error_msg.lower():
+            # This is often a networking/parsing error, not necessarily disabled transcripts
+            return {"success": False, "error": "YOUTUBE_API_ERROR", "details": f"YouTube returned invalid/empty response: {error_msg}"}
+        
+        return {"success": False, "error": "TRANSCRIPTION_FAILED", "details": error_msg}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
