@@ -7,6 +7,13 @@ from youtube_transcript_api import YouTubeTranscriptApi
 def get_transcript(video_id):
     try:
         proxy_url = os.environ.get("PROXY_URL")
+        proxy_user = os.environ.get("PROXY_USERNAME")
+        proxy_pass = os.environ.get("PROXY_PASSWORD")
+        proxy_host = os.environ.get("PROXY_HOST", "p.webshare.io:80")
+
+        if not proxy_url and proxy_user and proxy_pass:
+            proxy_url = f"http://{proxy_user}:{proxy_pass}@{proxy_host}"
+
         proxies = None
         if proxy_url:
             proxies = {"http": proxy_url, "https": proxy_url}
