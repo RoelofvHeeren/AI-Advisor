@@ -35,7 +35,9 @@ def get_transcript(video_id):
             # Older API
             transcript_data = YouTubeTranscriptApi.get_transcript(video_id, proxies=proxies)
         else:
-            return {"success": False, "error": "LIBRARY_INCOMPATIBLE", "details": "YouTubeTranscriptApi has neither list_transcripts nor get_transcript."}
+            api_methods = dir(YouTubeTranscriptApi)
+            api_version = getattr(youtube_transcript_api, '__version__', 'unknown')
+            return {"success": False, "error": "LIBRARY_INCOMPATIBLE", "details": f"Version: {api_version}. Methods: {api_methods}"}
 
         if transcript_data:
             full_transcript = " ".join([t['text'] for t in transcript_data])
