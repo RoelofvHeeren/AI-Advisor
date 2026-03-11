@@ -39,7 +39,11 @@ export async function getYouTubeTranscript(videoId: string) {
                     console.log('Layer 1 Success: Transcript retrieved via Python.');
                     return result.transcript;
                 }
-                layer1Error = `Python Script Error: ${result.error}`;
+                if (result.error === 'TRANSCRIPTS_DISABLED') {
+                    layer1Error = `Transcripts are disabled for this video.`;
+                } else {
+                    layer1Error = `Python Script Error: ${result.error}${result.details ? ` (${result.details})` : ''}`;
+                }
                 console.warn('Layer 1 Failed:', layer1Error);
             } catch (pE: any) {
                 layer1Error = `Python Output Parsing Error: ${pE.message} | Raw: ${stdout.substring(0, 100)}`;
@@ -137,11 +141,16 @@ export async function getYouTubeTranscript(videoId: string) {
 
         const combinedError = `L1: ${layer1Error} | L2: ${layer2Error} | L3: ${libError.message}`;
 
+        // Specific handling for disabled transcripts
+        if (combinedError.includes('Transcripts are disabled') || combinedError.includes('Transcript is disabled') || combinedError.includes('No caption tracks found')) {
+            throw new Error(`TRANSCRIPTS_DISABLED: This video does not have any available transcripts or captions. YouTube's automated transcription might be turned off or hasn't processed this video yet.`);
+        }
+
         // Check for geographic/government blocks
         if (combinedError.includes('national security') || combinedError.includes('government') || combinedError.includes('unavailable in this country')) {
             throw new Error(`GEOGRAPHIC RESTRICTION: This video is blocked in the server's region due to government or legal orders. WORKAROUND: Please copy the transcript manually from YouTube and paste it as "Text" ingestion, or use a VPN if running locally.`);
         }
 
-        throw new Error(`ALL LAYERS FAILED. | ${combinedError}`);
+        throw new Error(`ALL LAYERS FAILED. Please verify if the video has transcripts available on YouTube. | ${combinedError}`);
     }
 }
