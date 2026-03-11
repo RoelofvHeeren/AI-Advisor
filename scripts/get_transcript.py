@@ -37,7 +37,8 @@ def get_transcript(video_id):
         else:
             api_methods = dir(YouTubeTranscriptApi)
             api_version = getattr(youtube_transcript_api, '__version__', 'unknown')
-            return {"success": False, "error": "LIBRARY_INCOMPATIBLE", "details": f"Version: {api_version}. Methods: {api_methods}"}
+            api_file = getattr(youtube_transcript_api, '__file__', 'unknown_file')
+            return {"success": False, "error": "LIBRARY_INCOMPATIBLE", "details": f"File: {api_file}. Version: {api_version}. Methods: {api_methods}"}
 
         if transcript_data:
             full_transcript = " ".join([t['text'] for t in transcript_data])
