@@ -1,4 +1,4 @@
-providers = ["node", "python"]
+providers = ["node"]
 
 [phases.setup]
 nixPkgs = ["nodejs_22", "ffmpeg"]

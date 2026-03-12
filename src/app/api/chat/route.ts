@@ -55,7 +55,7 @@ export async function POST(req: Request) {
             .from('documents')
             .select('title, advisor_id')
             .in('advisor_id', advisorIds)
-            .limit(10000);
+            .limit(500); // Cap at 500 to prevent prompt bloat
 
         let documentContext = '';
         if (documents && documents.length > 0) {
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
                 .select('*')
                 .eq('session_id', sessionId)
                 .order('created_at', { ascending: true })
-                .limit(10);
+                .limit(80);
 
             if (pastMessages) {
                 history = pastMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
             supabase.rpc('match_document_chunks', {
                 query_embedding: queryEmbedding,
                 match_threshold: 0.3,
-                match_count: 40,
+                match_count: advisors.length > 2 ? 20 : 40, // Reduce snippet count when multiple advisors are active
                 filter_advisor_id: adv.id,
             })
         );
@@ -124,10 +124,10 @@ You are a HIGH-LEVEL MENTOR and EXPERT ADVISOR with UNPRECEDENTED ACCESS to your
     - When the user asks you to create a file or "upload" something to their project, you MUST use the "github_create_or_update_file" tool to push the content directly to the repo. Do not ask for permission, just do it.
     - If you are asked to review a project, use "github_list_files" to explore the structure, and "github_read_file" to read the code, then synthesize your advice.
     - NEVER invent file structures; always use the list tool to verify what actually exists in the repository before reading or writing.
-- GOHIGHLEVEL ACCESS: You have explicit permission to access the user's GoHighLevel accounts for two gyms: "Fifth Ave" and "Barn Gym".
+- GOHIGHLEVEL ACCESS: You have explicit permission to access the user's GoHighLevel accounts.
     - Use "ghl_get_contact" to fetch contact details. 
     - Use "ghl_add_note" to record important insights or conversation summaries directly into a contact's profile.
-    - Always ensure you specify the correct gym location (Fifth Ave or Barn Gym) based on the context of the user's query.
+    - Always ensure you specify the correct location based on the context of the user's query.
 - PROACTIVE ASSISTANCE: If a task can be assisted by your technical tools (like checking a file or adding a note), use them proactively. You are here to take action, not just talk.
 `;
 
@@ -233,7 +233,7 @@ GO:
                 parameters: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        location: { type: SchemaType.STRING, description: "The gym location to check. MUST be either 'Fifth Ave' or 'Barn Gym'." },
+                        location: { type: SchemaType.STRING, description: "The gym location to check." },
                         email: { type: SchemaType.STRING, description: "The contact's email address" },
                     },
                     required: ["location", "email"],
@@ -245,7 +245,7 @@ GO:
                 parameters: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        location: { type: SchemaType.STRING, description: "The gym location. MUST be either 'Fifth Ave' or 'Barn Gym'." },
+                        location: { type: SchemaType.STRING, description: "The gym location." },
                         contactId: { type: SchemaType.STRING, description: "The ID of the contact in GHL (get this from ghl_get_contact)." },
                         body: { type: SchemaType.STRING, description: "The text content of the note to add." },
                     },
@@ -318,6 +318,13 @@ GO:
             console.log(`Starting Mastermind Round 1: ${advisors.length} Advisors`);
             const perspectivePromises = advisors.map((adv, idx) => {
                 const advContext = contextResults[idx].data?.map((c: any) => c.content).join('\n') || 'No specific context.';
+
+                // ROUND 1 OPTIMIZATION: Only send the last ~15 messages to individual advisors to keep parallel calls fast
+                const historyLines = history.split('\n');
+                const limitedHistory = historyLines.length > 15
+                    ? `... (earlier messages omitted for brevity)\n${historyLines.slice(-15).join('\n')}`
+                    : history;
+
                 const advisorSysPrompt = `
 ${adv.system_prompt}
 
@@ -325,7 +332,7 @@ TASK: Provide your initial expert assessment of the user's query based on your s
 Be direct, expert, and thorough. This response will be reviewed by other experts in the mastermind.
 `;
                 const advisorUserParts = [
-                    { text: `PREVIOUS CONVERSATION HISTORY:\n${history || 'No previous history.'}` },
+                    { text: `PREVIOUS CONVERSATION HISTORY (MOST RECENT):\n${limitedHistory || 'No previous history.'}` },
                     { text: `YOUR SPECIALIZED KNOWLEDGE BASE SNIPPETS:\n${advContext}` },
                     { text: `USER QUERY: ${message || "Please analyze the attached files."}` }
                 ];
