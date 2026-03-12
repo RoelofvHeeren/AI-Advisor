@@ -89,14 +89,18 @@ function ChatInterface() {
   }, []);
 
   // 2. Handle Session Loading
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
+
   useEffect(() => {
     const loadSession = async () => {
+      setIsSessionLoading(true);
       if (!sessionId) {
         setMessages([]);
         // Default select first advisor if none selected and not in a session
         if (allAdvisors.length > 0 && selectedIds.length === 0) {
           setSelectedIds([allAdvisors[0].id]);
         }
+        setIsSessionLoading(false);
         return;
       }
 
@@ -106,7 +110,7 @@ function ChatInterface() {
         .select('advisor_id')
         .eq('session_id', sessionId);
 
-      if (sessionAdvisors) {
+      if (sessionAdvisors && sessionAdvisors.length > 0) {
         setSelectedIds(sessionAdvisors.map(sa => sa.advisor_id));
       }
 
@@ -123,10 +127,12 @@ function ChatInterface() {
           content: m.content
         })));
       }
+      setIsSessionLoading(false);
     };
 
     loadSession();
-  }, [sessionId, allAdvisors.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]); // Removed allAdvisors.length to prevent reset loops
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -567,13 +573,13 @@ function ChatInterface() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={selectedIds.length > 0 ? "Ask your discussion panel or drop files..." : "Select advisors to start..."}
-              disabled={selectedIds.length === 0}
+              placeholder={isSessionLoading ? "Loading session..." : (selectedIds.length > 0 ? "Ask your discussion panel or drop files..." : "Select advisors to start...")}
+              disabled={isSessionLoading || selectedIds.length === 0}
               className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 text-base py-3 resize-none max-h-[200px] overflow-y-auto custom-scrollbar outline-none focus:outline-none"
             />
             <button
               type="submit"
-              disabled={isLoading || (!input.trim() && attachments.length === 0) || selectedIds.length === 0}
+              disabled={isSessionLoading || isLoading || (!input.trim() && attachments.length === 0) || selectedIds.length === 0}
               className="ml-4 p-4 rounded-2xl bg-gradient-to-r from-[#139187] to-[#0d6b63] text-white hover:shadow-[0_0_20px_rgba(19,145,135,0.4)] disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
             >
               <Send size={20} />
